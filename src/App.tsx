@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
 import { cn } from "./utils/cn";
 import { supabase } from "./lib/supabase";
+import { sendRegistrationEmail } from "./lib/email";
 import { loadAllSeedData, saveInventory, savePurchases, saveServicePayments, saveCustomers, saveInvoices, saveAppointments, saveUserAccounts } from "./lib/supabase-data";
 
 type Role = "Administrador" | "Cliente";
@@ -984,6 +985,7 @@ export default function App() {
     setSessionUser(nextUser.username);
     setRole("Administrador");
     setActiveView("panel");
+    sendRegistrationEmail(nextUser.username);
     return "";
   }
 
