@@ -4,7 +4,7 @@ const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
 const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
 const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
-export async function sendRegistrationEmail(username: string) {
+export async function sendRegistrationEmail(email: string) {
   if (!serviceId || !templateId || !publicKey) return;
 
   try {
@@ -12,7 +12,7 @@ export async function sendRegistrationEmail(username: string) {
       serviceId,
       templateId,
       {
-        username,
+        email,
         date: new Date().toLocaleDateString("es-PA", {
           year: "numeric",
           month: "long",
@@ -20,7 +20,7 @@ export async function sendRegistrationEmail(username: string) {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        message: `Nuevo usuario registrado en el sistema óptico: ${username}`,
+        message: `Nuevo usuario registrado en el sistema óptico: ${email}`,
       },
       publicKey,
     );

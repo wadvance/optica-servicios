@@ -112,7 +112,7 @@ export type UserAccount = {
 };
 
 type AuthUser = {
-  username: string;
+  email: string;
   password: string;
   createdAt: string;
 };
@@ -558,22 +558,22 @@ function whatsAppUrl(message = `Hola, deseo comunicarme con ${business.name}.`) 
 
 function passwordRules(password: string) {
   return [
-    { label: "Maximo 8 caracteres", valid: password.length > 0 && password.length <= 8 },
+    { label: "Maximo 12 caracteres", valid: password.length > 0 && password.length <= 12 },
     { label: "Incluye una mayuscula", valid: /[A-Z]/.test(password) },
     { label: "Incluye un numero", valid: /\d/.test(password) },
     { label: "Incluye un caracter especial", valid: /[^A-Za-z0-9]/.test(password) },
   ];
 }
 
-function validateAuthCredentials(username: string, password: string) {
-  const trimmedUsername = username.trim();
+function validateAuthCredentials(email: string, password: string) {
+  const trimmedEmail = email.trim();
 
-  if (trimmedUsername.length < 3 || trimmedUsername.length > 8) {
-    return "El usuario debe tener entre 3 y 8 caracteres.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+    return "Ingresa un correo electronico valido.";
   }
 
   if (!passwordRules(password).every((rule) => rule.valid)) {
-    return "La contrasena debe tener maximo 8 caracteres e incluir mayuscula, numero y caracter especial.";
+    return "La contrasena debe tener maximo 12 caracteres e incluir mayuscula, numero y caracter especial.";
   }
 
   return "";
@@ -589,18 +589,18 @@ function AuthScreen({
   onLogin: (username: string, password: string) => string;
 }) {
   const [mode, setMode] = useState<AuthMode>(registeredUser ? "ingreso" : "registro");
-  const [form, setForm] = useState({ username: registeredUser?.username ?? "", password: "" });
+  const [form, setForm] = useState({ email: registeredUser?.email ?? "", password: "" });
   const [message, setMessage] = useState("");
   const rules = passwordRules(form.password);
 
   useEffect(() => {
     setMode(registeredUser ? "ingreso" : "registro");
-    setForm((current) => ({ ...current, username: registeredUser?.username ?? current.username }));
+    setForm((current) => ({ ...current, email: registeredUser?.email ?? current.email }));
   }, [registeredUser]);
 
   function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = mode === "registro" ? onRegister(form.username, form.password) : onLogin(form.username, form.password);
+    const result = mode === "registro" ? onRegister(form.email, form.password) : onLogin(form.email, form.password);
     setMessage(result);
   }
 
@@ -641,28 +641,28 @@ function AuthScreen({
           </div>
 
           <form className="mt-6 space-y-5" onSubmit={submitAuth}>
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
-              Usuario
-              <input
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-                maxLength={8}
-                value={form.username}
-                onChange={(event) => setForm((current) => ({ ...current, username: event.target.value }))}
-                placeholder="JorgeT1"
-                autoComplete="username"
-              />
-              <span className="text-xs font-medium text-slate-500">Entre 3 y 8 caracteres.</span>
-            </label>
+                <label className="grid gap-2 text-sm font-bold text-slate-700">
+                  Correo electronico
+                  <input
+                    className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                    type="email"
+                    value={form.email}
+                    onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                    placeholder="jorge@sop.pa"
+                    autoComplete="email"
+                  />
+                  <span className="text-xs font-medium text-slate-500">Ingresa un correo valido.</span>
+                </label>
 
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               Contrasena
               <input
                 className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-                maxLength={8}
-                type="password"
-                value={form.password}
-                onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                placeholder="Sop1!"
+                    maxLength={12}
+                    type="password"
+                    value={form.password}
+                    onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                    placeholder="Optica1!"
                 autoComplete={mode === "registro" ? "new-password" : "current-password"}
               />
             </label>
@@ -962,17 +962,17 @@ export default function App() {
   const netIncome = salesTotal - totalExpenses;
   const currentNav = role === "Administrador" ? adminNav : clientNav;
 
-  async function registerAuthUser(username: string, password: string) {
-    const error = validateAuthCredentials(username, password);
+  async function registerAuthUser(email: string, password: string) {
+    const error = validateAuthCredentials(email, password);
 
     if (error) {
       return error;
     }
 
-    const email = `${username.trim().toLowerCase()}@sop.local`;
+    const normalizedEmail = email.trim().toLowerCase();
 
     try {
-      const { error: signUpError } = await supabase.auth.signUp({ email, password });
+      const { error: signUpError } = await supabase.auth.signUp({ email: normalizedEmail, password });
       if (signUpError && !signUpError.message.includes("already") && !signUpError.message.includes("anon")) {
         return `Error al crear usuario: ${signUpError.message}`;
       }
@@ -980,33 +980,33 @@ export default function App() {
       // Offline: continue with local auth
     }
 
-    const nextUser = { username: username.trim(), password, createdAt: todayDate() };
+    const nextUser = { email: normalizedEmail, password, createdAt: todayDate() };
     setRegisteredUser(nextUser);
-    setSessionUser(nextUser.username);
+    setSessionUser(nextUser.email);
     setRole("Administrador");
     setActiveView("panel");
-    sendRegistrationEmail(nextUser.username);
+    sendRegistrationEmail(nextUser.email);
     return "";
   }
 
-  async function loginAuthUser(username: string, password: string) {
+  async function loginAuthUser(email: string, password: string) {
     if (!registeredUser) {
       return "Primero debes registrar el usuario inicial.";
     }
 
-    if (registeredUser.username !== username.trim() || registeredUser.password !== password) {
-      return "Usuario o contrasena incorrectos.";
+    if (registeredUser.email !== email.trim().toLowerCase() || registeredUser.password !== password) {
+      return "Correo o contrasena incorrectos.";
     }
 
-    const email = `${username.trim().toLowerCase()}@sop.local`;
+    const normalizedEmail = email.trim().toLowerCase();
 
     try {
-      await supabase.auth.signInWithPassword({ email, password });
+      await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
     } catch {
       // Offline: continue with local auth
     }
 
-    setSessionUser(registeredUser.username);
+    setSessionUser(registeredUser.email);
     return "";
   }
 
