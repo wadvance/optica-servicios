@@ -178,7 +178,7 @@ const adminNav: { id: AdminView; label: string; description: string }[] = [
   { id: "facturacion", label: "Facturacion", description: "Cliente, CUFE y CAFE" },
   { id: "avances", label: "Avances", description: "Tecnologia en lentes y gafas" },
   { id: "servicios", label: "Pagos", description: "Servicios y vencimientos" },
-  { id: "usuarios", label: "Usuarios", description: "Administrador y clientes" },
+  { id: "usuarios", label: "Clientes", description: "Administrador y clientes" },
   { id: "cumplimiento", label: "Panama", description: "DGI, SFEP e ITBMS" },
   { id: "ia", label: "Conocimiento", description: "Guia optica y tecnologia" },
   { id: "resultados", label: "Resultados", description: "Examenes de vision" },
@@ -1969,10 +1969,6 @@ export default function App() {
                 </label>
             </div>
             <label className="grid gap-2 text-sm font-bold text-slate-700">
-              Direccion
-              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.address} onChange={(event) => setCustomerForm((form) => ({ ...form, address: event.target.value }))} placeholder="Calle, edificio, piso" />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Ubicacion
                 <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={scannerForm.location} onChange={(event) => setScannerForm((form) => ({ ...form, location: event.target.value }))} />
               </label>
@@ -2366,7 +2362,7 @@ export default function App() {
 
   const usersView = (
     <div className="space-y-8">
-      <SectionTitle title="Usuarios y clientes" subtitle="Administra perfiles de administrador y clientes, datos fiscales, contacto e historia optometrica basica." />
+      <SectionTitle title="Clientes" subtitle="Administra perfiles de administrador y clientes, datos fiscales, contacto e historia optometrica basica." />
       <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
         <form className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80" onSubmit={addCustomer}>
           <h3 className="text-xl font-black text-slate-950">Crear cliente</h3>
@@ -2375,14 +2371,14 @@ export default function App() {
               Nombre o razon social
               <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.name} onChange={(event) => setCustomerForm((form) => ({ ...form, name: event.target.value }))} />
             </label>
-            <div className="grid gap-4 sm:grid-cols-[1fr_90px]">
+            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Cedula / RUC
                 <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.document} onChange={(event) => setCustomerForm((form) => ({ ...form, document: event.target.value }))} />
               </label>
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 DV
-                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.dv} onChange={(event) => setCustomerForm((form) => ({ ...form, dv: event.target.value }))} />
+                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.dv} onChange={(event) => setCustomerForm((form) => ({ ...form, dv: event.target.value }))} placeholder="00" />
               </label>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -2392,9 +2388,13 @@ export default function App() {
               </label>
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Telefono
-                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.phone} onChange={(event) => setCustomerForm((form) => ({ ...form, phone: event.target.value }))} />
+                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.phone} onChange={(event) => setCustomerForm((form) => ({ ...form, phone: event.target.value }))} placeholder="+507" />
               </label>
             </div>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Direccion
+              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.address} onChange={(event) => setCustomerForm((form) => ({ ...form, address: event.target.value }))} placeholder="Calle, edificio, piso" />
+            </label>
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               Formula optica
               <textarea className="min-h-24 rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.prescription} onChange={(event) => setCustomerForm((form) => ({ ...form, prescription: event.target.value }))} placeholder="OD, OI, eje, cilindro, esfera, ADD, DP" />
@@ -2911,7 +2911,7 @@ export default function App() {
               <a className="rounded-2xl bg-emerald-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-emerald-600/20" href={whatsAppUrl(role === "Cliente" && activeClient ? `Hola, soy ${activeClient.name} y deseo comunicarme con la optica.` : undefined)} target="_blank" rel="noreferrer">
                 WhatsApp
               </a>
-              <button className="cursor-pointer rounded-2xl bg-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-cyan-600/20" onClick={() => setActiveView(role === "Administrador" ? "facturacion" : "citas")}>{role === "Administrador" ? "Nueva factura" : "Solicitar cita"}</button>
+
               {deferredPrompt && (
                 <button className="rounded-2xl bg-amber-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-amber-600/20" onClick={async () => { (deferredPrompt as any).prompt(); const res = await (deferredPrompt as any).userChoice; if (res.outcome === "accepted") setDeferredPrompt(null); }}>
                   Instalar app
