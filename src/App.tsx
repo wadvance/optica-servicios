@@ -145,7 +145,10 @@ const business = {
   dv: "00",
   address: "Ciudad de Panamá, Panamá",
   phone: "+507 6000-0000",
-  whatsapp: "5076000000",
+  celular: "66827364",
+  fijo: "730 1045",
+  whatsapp: "50766827364",
+  hours: "Lunes a viernes 8:00 am a 5:30 pm, Sábado 8:00 am a 4:00 pm",
 };
 
 const adminNav: { id: AdminView; label: string; description: string }[] = [
@@ -1413,11 +1416,12 @@ export default function App() {
             </p>
           </div>
           <div className="rounded-[2rem] border border-white/10 bg-white/10 p-5 backdrop-blur">
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-100">Estado Panama</p>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-100">Contacto y horario</p>
             <div className="mt-4 grid gap-3 text-sm text-slate-200">
-              <p>SFEP/DGI: campos RUC, DV, CUFE y CAFE modelados.</p>
-              <p>ITBMS: tasa general 7% y lineas exentas configurables.</p>
-              <p>Multiplataforma: responsive, instalable como PWA y datos locales.</p>
+              <p><span className="font-semibold text-white">Celular:</span> {business.celular}</p>
+              <p><span className="font-semibold text-white">Fijo:</span> {business.fijo}</p>
+              <p><span className="font-semibold text-white">Direccion:</span> {business.address}</p>
+              <p className="mt-2 rounded-xl bg-white/10 p-3 text-center font-semibold text-white">{business.hours}</p>
             </div>
           </div>
         </div>
@@ -1986,6 +1990,24 @@ export default function App() {
 
         <div className="space-y-6">
           <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
+            <h3 className="text-xl font-black text-slate-950">Contacto y horario</h3>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-cyan-50 p-4 ring-1 ring-cyan-200">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">Celular</p>
+                <p className="mt-2 text-lg font-black text-cyan-900">{business.celular}</p>
+              </div>
+              <div className="rounded-2xl bg-cyan-50 p-4 ring-1 ring-cyan-200">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">Fijo</p>
+                <p className="mt-2 text-lg font-black text-cyan-900">{business.fijo}</p>
+              </div>
+            </div>
+            <div className="mt-3 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-600">Horario de atencion</p>
+              <p className="mt-2 text-lg font-black text-slate-900">{business.hours}</p>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
             <h3 className="text-xl font-black text-slate-950">Cuentas de acceso</h3>
             <div className="mt-4 grid gap-3">
               {users.map((user) => (
@@ -2315,7 +2337,7 @@ export default function App() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200">
-                <span className="font-black text-slate-950">{business.phone}</span> · {business.address} · usuario {sessionUser}
+                Cel {business.celular} / Fijo {business.fijo} · {business.address} · usuario {sessionUser}
               </div>
               <a className="rounded-2xl bg-emerald-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-emerald-600/20" href={whatsAppUrl(role === "Cliente" && activeClient ? `Hola, soy ${activeClient.name} y deseo comunicarme con la optica.` : undefined)} target="_blank" rel="noreferrer">
                 WhatsApp
