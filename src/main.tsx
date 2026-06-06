@@ -1,4 +1,4 @@
-import { Component, type ReactNode, StrictMode } from "react";
+import { Component, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
@@ -70,9 +70,7 @@ function TrialGate() {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <TrialGate />
-    </ErrorBoundary>
-  </StrictMode>
+  <ErrorBoundary>
+    <TrialGate />
+  </ErrorBoundary>
 );
