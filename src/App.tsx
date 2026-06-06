@@ -810,6 +810,7 @@ export default function App() {
   const [users, setUsers] = usePersistentState<UserAccount[]>("sop-users", usersSeed);
   const [techAdvances] = useState<TechAdvance[]>(techAdvancesSeed);
   const [examResults, setExamResults] = usePersistentState<ExamResult[]>("sop-exams", []);
+  const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null);
 
   const [examForm, setExamForm] = useState({
     customerId: customers[0]?.id ?? "",
@@ -1027,6 +1028,9 @@ export default function App() {
     if ("serviceWorker" in navigator && window.location.protocol === "https:") {
       navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     }
+    const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e as any); };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
   // Sync: load data from Supabase on mount (replaces localStorage if available)
@@ -2828,6 +2832,11 @@ export default function App() {
                 WhatsApp
               </a>
               <button className="rounded-2xl bg-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-cyan-600/20" onClick={() => setActiveView(role === "Administrador" ? "facturacion" : "citas")}>{role === "Administrador" ? "Nueva factura" : "Solicitar cita"}</button>
+              {deferredPrompt && (
+                <button className="rounded-2xl bg-amber-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-amber-600/20" onClick={async () => { (deferredPrompt as any).prompt(); const res = await (deferredPrompt as any).userChoice; if (res.outcome === "accepted") setDeferredPrompt(null); }}>
+                  Instalar app
+                </button>
+              )}
               <button className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white" onClick={() => { stopScanner(); supabase.auth.signOut(); setSessionUser(null); }}>Salir</button>
             </div>
           </header>
