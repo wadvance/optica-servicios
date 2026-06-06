@@ -2033,7 +2033,7 @@ export default function App() {
           </div>
 
           <div className="mt-5 overflow-hidden rounded-[1.5rem] border border-slate-200">
-            <div className="hidden grid-cols-[1fr_90px_90px_90px_120px] bg-slate-950 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-white md:grid">
+            <div className="hidden grid-cols-[1fr_90px_90px_75px_120px] bg-slate-950 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-white md:grid">
               <span>Producto</span>
               <span>Stock</span>
               <span>Min.</span>
@@ -2042,7 +2042,7 @@ export default function App() {
             </div>
             <div className="divide-y divide-slate-200 bg-white">
               {visibleInventory.map((item) => (
-                <div key={item.id} className="grid gap-4 px-5 py-4 md:grid-cols-[1fr_90px_90px_90px_120px] md:items-center">
+                <div key={item.id} className="grid gap-4 px-5 py-4 md:grid-cols-[1fr_90px_90px_75px_120px] md:items-center">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-black text-slate-950">{item.name}</p>
@@ -2320,7 +2320,7 @@ export default function App() {
                 <option value="Impuestos">Impuestos</option>
               </select>
             </label>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Vence
                 <input type="date" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={serviceForm.dueDate} onChange={(event) => setServiceForm((form) => ({ ...form, dueDate: event.target.value }))} />
@@ -2385,7 +2385,7 @@ export default function App() {
               Nombre o razon social
               <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.name} onChange={(event) => setCustomerForm((form) => ({ ...form, name: event.target.value }))} />
             </label>
-            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+            <div className="grid gap-4 sm:grid-cols-[1fr_80px]">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Cedula / RUC
                 <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.document} onChange={(event) => setCustomerForm((form) => ({ ...form, document: event.target.value }))} />
@@ -2395,7 +2395,7 @@ export default function App() {
                 <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.dv} onChange={(event) => setCustomerForm((form) => ({ ...form, dv: event.target.value }))} placeholder="00" />
               </label>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Email
                 <input type="email" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.email} onChange={(event) => setCustomerForm((form) => ({ ...form, email: event.target.value }))} />
