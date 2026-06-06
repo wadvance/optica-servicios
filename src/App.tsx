@@ -1888,9 +1888,6 @@ export default function App() {
             <button className="rounded-full bg-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-cyan-600/20" onClick={() => setScannerOpen(true)}>
               Escanear con camara
             </button>
-            <button className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white" onClick={resetDemoData}>
-              Restaurar demo
-            </button>
           </div>
         }
       />
