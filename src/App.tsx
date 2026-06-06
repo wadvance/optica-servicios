@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
 import { cn } from "./utils/cn";
 import { supabase } from "./lib/supabase";
 import { sendRegistrationEmail } from "./lib/email";
@@ -6,7 +6,7 @@ import { loadAllSeedData, saveInventory, savePurchases, saveServicePayments, sav
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 type Role = "Administrador" | "Cliente";
-type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "avances" | "servicios" | "usuarios" | "cumplimiento";
+type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "avances" | "servicios" | "usuarios" | "cumplimiento" | "ia";
 type ClientView = "portal" | "mis-facturas" | "recetas" | "citas";
 type View = AdminView | ClientView;
 
@@ -160,6 +160,7 @@ const adminNav: { id: AdminView; label: string; description: string }[] = [
   { id: "servicios", label: "Pagos", description: "Servicios y vencimientos" },
   { id: "usuarios", label: "Usuarios", description: "Administrador y clientes" },
   { id: "cumplimiento", label: "Panama", description: "DGI, SFEP e ITBMS" },
+  { id: "ia", label: "Buscador IA", description: "Informacion de optica y tecnologia" },
 ];
 
 const clientNav: { id: ClientView; label: string; description: string }[] = [
@@ -786,6 +787,40 @@ export default function App() {
   const [appointments, setAppointments] = usePersistentState<Appointment[]>("sop-appointments", appointmentsSeed);
   const [users, setUsers] = usePersistentState<UserAccount[]>("sop-users", usersSeed);
   const [techAdvances] = useState<TechAdvance[]>(techAdvancesSeed);
+
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [aiKeyInput, setAiKeyInput] = useState(localStorage.getItem("gemini_key") || "");
+
+  const handleAISearch = useCallback(async (query: string) => {
+    setAiLoading(true);
+    setAiError("");
+    setAiResult("");
+    const key = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem("gemini_key") || "";
+    if (!key) { setAiError("Configura la clave de Gemini en el campo de abajo o como VITE_GEMINI_API_KEY"); setAiLoading(false); return; }
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [{ text: `Eres un experto en optica, lentes, monturas y tecnologia visual. Responde de forma clara y concisa en espanol a esta consulta de un optico profesional: ${query}` }]
+          }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message ?? "Error al consultar la IA");
+      setAiResult(data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Sin respuesta.");
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Error de conexion");
+    } finally {
+      setAiLoading(false);
+    }
+  }, []);
 
   const [inventoryQuery, setInventoryQuery] = useState("");
   const [inventoryCategory, setInventoryCategory] = useState("Todas");
@@ -2274,6 +2309,34 @@ export default function App() {
     <EmptyState title="Sin cliente" subtitle="Selecciona un cliente para agendar." />
   );
 
+  const aiSearchView = (
+    <div className="space-y-6">
+      <section className="rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/50 ring-1 ring-slate-200/80">
+        <h2 className="mb-4 text-xl font-black text-slate-950">Buscador IA</h2>
+        <p className="mb-6 text-sm text-slate-500">Pregunta sobre lentes, monturas, tecnologia optica, marcas, tendencias o cualquier tema relacionado.</p>
+        <details className="mb-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+          <summary className="cursor-pointer text-xs font-black text-slate-500">Configurar clave de IA</summary>
+          <div className="mt-3 flex gap-2">
+            <input value={aiKeyInput} onChange={(e) => { setAiKeyInput(e.target.value); localStorage.setItem("gemini_key", e.target.value); }} className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" placeholder="Clave API de Gemini" />
+            <span className="self-center text-xs text-emerald-600 font-black">✓ Guardada</span>
+          </div>
+        </details>
+        <form onSubmit={(e) => { e.preventDefault(); if (aiQuery.trim()) handleAISearch(aiQuery); }}>
+          <div className="flex gap-3">
+            <input name="q" value={aiQuery} onChange={(e) => setAiQuery(e.target.value)} className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" placeholder="Ej: tipos de lentes progresivos, ultimas tecnologias en gafas..." />
+            <button type="submit" disabled={aiLoading} className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-950/15 transition hover:bg-slate-800 disabled:opacity-50">{aiLoading ? "Buscando..." : "Buscar"}</button>
+          </div>
+        </form>
+        {aiError && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-200">{aiError}</p>}
+        {aiResult && (
+          <div className="mt-6 rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-200">
+            <div className="prose prose-slate max-w-none text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{aiResult}</div>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+
   const contentByView: Record<View, ReactNode> = {
     panel: panelView,
     inventario: inventoryView,
@@ -2283,6 +2346,7 @@ export default function App() {
     servicios: servicesView,
     usuarios: usersView,
     cumplimiento: complianceView,
+    ia: aiSearchView,
     portal: portalView,
     "mis-facturas": clientInvoicesView,
     recetas: prescriptionsView,
