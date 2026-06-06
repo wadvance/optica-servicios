@@ -6,8 +6,8 @@ import { loadAllSeedData, saveInventory, savePurchases, saveServicePayments, sav
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 type Role = "Administrador" | "Cliente";
-type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "avances" | "servicios" | "usuarios" | "cumplimiento" | "ia";
-type ClientView = "portal" | "mis-facturas" | "recetas" | "citas";
+type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "avances" | "servicios" | "usuarios" | "cumplimiento" | "ia" | "resultados";
+type ClientView = "portal" | "mis-facturas" | "recetas" | "citas" | "resultados";
 type View = AdminView | ClientView;
 
 export type InventoryItem = {
@@ -112,6 +112,25 @@ export type UserAccount = {
   status: "Activo" | "Pendiente";
 };
 
+export type ExamResult = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  date: string;
+  odSphere: number;
+  odCylinder: number;
+  odAxis: number;
+  oiSphere: number;
+  oiCylinder: number;
+  oiAxis: number;
+  add: number;
+  dip: number;
+  needsLenses: boolean;
+  lensType: string;
+  notes: string;
+  status: "Pendiente" | "Completado";
+};
+
 type AuthUser = {
   email: string;
   password: string;
@@ -161,6 +180,7 @@ const adminNav: { id: AdminView; label: string; description: string }[] = [
   { id: "usuarios", label: "Usuarios", description: "Administrador y clientes" },
   { id: "cumplimiento", label: "Panama", description: "DGI, SFEP e ITBMS" },
   { id: "ia", label: "Conocimiento", description: "Guia optica y tecnologia" },
+  { id: "resultados", label: "Resultados", description: "Examenes de vision" },
 ];
 
 const clientNav: { id: ClientView; label: string; description: string }[] = [
@@ -168,6 +188,7 @@ const clientNav: { id: ClientView; label: string; description: string }[] = [
   { id: "mis-facturas", label: "Facturas", description: "Estado de pagos" },
   { id: "recetas", label: "Recetas", description: "Formula optica" },
   { id: "citas", label: "Citas", description: "Solicitudes" },
+  { id: "resultados", label: "Resultados", description: "Mis examenes de vision" },
 ];
 
 const categories = ["Todas", "Monturas", "Lentes oftalmicos", "Lentes de contacto", "Accesorios", "Servicios clinicos"];
@@ -787,6 +808,22 @@ export default function App() {
   const [appointments, setAppointments] = usePersistentState<Appointment[]>("sop-appointments", appointmentsSeed);
   const [users, setUsers] = usePersistentState<UserAccount[]>("sop-users", usersSeed);
   const [techAdvances] = useState<TechAdvance[]>(techAdvancesSeed);
+  const [examResults, setExamResults] = usePersistentState<ExamResult[]>("sop-exams", []);
+
+  const [examForm, setExamForm] = useState({
+    customerId: customers[0]?.id ?? "",
+    odSphere: "-2.00",
+    odCylinder: "-0.75",
+    odAxis: "180",
+    oiSphere: "-2.25",
+    oiCylinder: "-0.50",
+    oiAxis: "175",
+    add: "0.00",
+    dip: "64",
+    needsLenses: true,
+    lensType: "Progresivos",
+    notes: "",
+  });
 
   const [aiQuery, setAiQuery] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -1590,6 +1627,18 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      <div className="flex flex-wrap gap-3">
+        <button className="rounded-2xl bg-cyan-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-cyan-600/20 transition hover:-translate-y-0.5" onClick={() => setActiveView("resultados")}>
+          Examen visual
+        </button>
+        <button className="rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:-translate-y-0.5" onClick={() => setActiveView("facturacion")}>
+          Nueva factura
+        </button>
+        <button className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-950/15 transition hover:-translate-y-0.5" onClick={() => setActiveView("inventario")}>
+          Inventario
+        </button>
+      </div>
 
       <section className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80 backdrop-blur">
         <h3 className="text-xl font-black text-slate-950">Estado de resultados simplificado</h3>
@@ -2438,6 +2487,129 @@ export default function App() {
     <EmptyState title="Sin cliente" subtitle="Selecciona un cliente para agendar." />
   );
 
+  const resultsView = (
+    <div className="space-y-8">
+      <SectionTitle title="Examenes de vision" subtitle="Registro de examenes visuales, formula optica y recomendaciones de lentes." />
+      {role === "Administrador" && (
+        <details className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
+          <summary className="cursor-pointer text-lg font-black text-slate-950">Nuevo examen visual</summary>
+          <form className="mt-6 grid gap-6" onSubmit={(e) => {
+            e.preventDefault();
+            const newExam: ExamResult = {
+              id: `EXM-${String(examResults.length + 1).padStart(3, "0")}`,
+              customerId: examForm.customerId,
+              customerName: customers.find(c => c.id === examForm.customerId)?.name ?? "",
+              date: new Date().toISOString(),
+              odSphere: parseFloat(examForm.odSphere) || 0,
+              odCylinder: parseFloat(examForm.odCylinder) || 0,
+              odAxis: parseFloat(examForm.odAxis) || 0,
+              oiSphere: parseFloat(examForm.oiSphere) || 0,
+              oiCylinder: parseFloat(examForm.oiCylinder) || 0,
+              oiAxis: parseFloat(examForm.oiAxis) || 0,
+              add: parseFloat(examForm.add) || 0,
+              dip: parseFloat(examForm.dip) || 0,
+              needsLenses: examForm.needsLenses,
+              lensType: examForm.lensType,
+              notes: examForm.notes,
+              status: "Completado",
+            };
+            setExamResults([newExam, ...examResults]);
+            setExamForm(form => ({ ...form, notes: "" }));
+            (e.currentTarget.querySelector("summary") as HTMLElement)?.click();
+          }}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Paciente
+                <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={examForm.customerId} onChange={e => setExamForm(f => ({ ...f, customerId: e.target.value }))}>
+                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <p className="col-span-full text-sm font-black text-cyan-700">Ojo derecho (OD)</p>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Esfera (SPH)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.odSphere} onChange={e => setExamForm(f => ({ ...f, odSphere: e.target.value }))} placeholder="Ej: -2.00" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Cilindro (CYL)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.odCylinder} onChange={e => setExamForm(f => ({ ...f, odCylinder: e.target.value }))} placeholder="Ej: -0.75" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Eje (AXIS)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.odAxis} onChange={e => setExamForm(f => ({ ...f, odAxis: e.target.value }))} placeholder="Ej: 180" /></label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <p className="col-span-full text-sm font-black text-cyan-700">Ojo izquierdo (OI)</p>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Esfera (SPH)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.oiSphere} onChange={e => setExamForm(f => ({ ...f, oiSphere: e.target.value }))} placeholder="Ej: -2.25" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Cilindro (CYL)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.oiCylinder} onChange={e => setExamForm(f => ({ ...f, oiCylinder: e.target.value }))} placeholder="Ej: -0.50" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Eje (AXIS)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.oiAxis} onChange={e => setExamForm(f => ({ ...f, oiAxis: e.target.value }))} placeholder="Ej: 175" /></label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Adicion (ADD)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.add} onChange={e => setExamForm(f => ({ ...f, add: e.target.value }))} placeholder="Ej: 1.50" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">DIP (mm)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.dip} onChange={e => setExamForm(f => ({ ...f, dip: e.target.value }))} placeholder="Ej: 64" /></label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Requiere lentes
+                <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={examForm.needsLenses ? "si" : "no"} onChange={e => setExamForm(f => ({ ...f, needsLenses: e.target.value === "si" }))}>
+                  <option value="si">Si</option>
+                  <option value="no">No</option>
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Tipo de lente recomendado
+                <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={examForm.lensType} onChange={e => setExamForm(f => ({ ...f, lensType: e.target.value }))}>
+                  <option>Monofocales</option>
+                  <option>Bifocales</option>
+                  <option>Progresivos</option>
+                  <option>Lentes de contacto</option>
+                  <option>Lentes de trabajo</option>
+                  <option>Lentes de sol graduados</option>
+                </select>
+              </label>
+            </div>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Notas / Observaciones
+              <textarea className="min-h-20 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={examForm.notes} onChange={e => setExamForm(f => ({ ...f, notes: e.target.value }))} placeholder="Recomendaciones, hallazgos clinicos..." />
+            </label>
+            <button className="rounded-2xl bg-slate-950 px-8 py-3 font-black text-white shadow-lg shadow-slate-950/15 transition hover:bg-slate-800">Guardar examen</button>
+          </form>
+        </details>
+      )}
+      <div className="grid gap-6">
+        {(role === "Administrador" ? examResults : examResults.filter(e => e.customerId === activeClientId)).map((exam) => {
+          const formatRx = (v: number) => (v >= 0 ? "+" : "") + v.toFixed(2);
+          return (
+            <article key={exam.id} className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-700">{exam.id}</p>
+                  <h3 className="mt-1 text-2xl font-black text-slate-950">{exam.customerName}</h3>
+                  <p className="mt-1 text-sm text-slate-500">{formatDate(exam.date)}</p>
+                </div>
+                <div className="flex gap-2">
+                  <StatusBadge status={exam.status as any} />
+                </div>
+              </div>
+              <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                <div className="rounded-2xl bg-cyan-50 p-4 ring-1 ring-cyan-200">
+                  <p className="text-sm font-black uppercase tracking-[0.15em] text-cyan-700">OD (derecho)</p>
+                  <p className="mt-2 text-lg font-black text-slate-950">{formatRx(exam.odSphere)} {formatRx(exam.odCylinder)} x {exam.odAxis}°</p>
+                  <p className="text-xs text-slate-500">Esfera · Cilindro · Eje</p>
+                </div>
+                <div className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
+                  <p className="text-sm font-black uppercase tracking-[0.15em] text-emerald-700">OI (izquierdo)</p>
+                  <p className="mt-2 text-lg font-black text-slate-950">{formatRx(exam.oiSphere)} {formatRx(exam.oiCylinder)} x {exam.oiAxis}°</p>
+                  <p className="text-xs text-slate-500">Esfera · Cilindro · Eje</p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-6 text-sm">
+                <p><span className="font-bold text-slate-700">ADD:</span> {exam.add.toFixed(2)}</p>
+                <p><span className="font-bold text-slate-700">DIP:</span> {exam.dip} mm</p>
+                <p><span className="font-bold text-slate-700">Lentes:</span> {exam.needsLenses ? exam.lensType : "No requiere"}</p>
+              </div>
+              {exam.notes && <p className="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200">{exam.notes}</p>}
+            </article>
+          );
+        })}
+        {examResults.length === 0 && <EmptyState title="Sin examenes registrados" subtitle="Realiza un examen visual para ver los resultados aqui." />}
+      </div>
+    </div>
+  );
+
   const aiSearchView = (
     <div className="space-y-6">
       <section className="rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/50 ring-1 ring-slate-200/80">
@@ -2469,6 +2641,7 @@ export default function App() {
     usuarios: usersView,
     cumplimiento: complianceView,
     ia: aiSearchView,
+    resultados: resultsView,
     portal: portalView,
     "mis-facturas": clientInvoicesView,
     recetas: prescriptionsView,
