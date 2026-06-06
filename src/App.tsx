@@ -2785,7 +2785,7 @@ export default function App() {
       </div>
 
       <div className="mx-auto flex min-h-screen w-full max-w-[1560px] flex-col lg:flex-row">
-        <aside className="sticky top-0 z-20 border-b border-slate-200/80 bg-[#f4f1eb]/90 px-4 py-4 backdrop-blur lg:h-screen lg:w-80 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+        <aside className="sticky top-0 z-20 flex max-h-screen flex-col border-b border-slate-200/80 bg-[#f4f1eb]/90 px-4 py-4 backdrop-blur lg:h-screen lg:w-80 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
           <div className="flex flex-col gap-5">
             <Logo />
             <div className="grid grid-cols-2 gap-2 rounded-full bg-white p-1 shadow-sm ring-1 ring-slate-200">
@@ -2804,16 +2804,16 @@ export default function App() {
                 </select>
               </label>
             )}
-
-            <nav className="-mx-1 flex gap-2 overflow-x-auto pb-2 lg:mx-0 lg:block lg:space-y-2 lg:overflow-visible lg:pb-0">
-              {currentNav.map((item) => (
-                <button key={item.id} className={cn("group min-w-44 rounded-3xl px-4 py-3 text-left transition lg:w-full", activeView === item.id ? "bg-slate-950 text-white shadow-xl shadow-slate-950/15" : "bg-white/70 text-slate-700 ring-1 ring-slate-200 hover:bg-white")} onClick={() => setActiveView(item.id)}>
-                  <span className="block text-sm font-black">{item.label}</span>
-                  <span className={cn("mt-1 block text-xs leading-5", activeView === item.id ? "text-slate-300" : "text-slate-500")}>{item.description}</span>
-                </button>
-              ))}
-            </nav>
           </div>
+
+          <nav className="-mx-1 flex gap-2 overflow-x-auto pb-2 lg:mx-0 lg:mt-5 lg:block lg:flex-1 lg:space-y-2 lg:overflow-y-auto lg:pb-0">
+            {currentNav.map((item) => (
+              <button key={item.id} className={cn("group min-w-44 rounded-3xl px-4 py-3 text-left transition lg:w-full", activeView === item.id ? "bg-slate-950 text-white shadow-xl shadow-slate-950/15" : "bg-white/70 text-slate-700 ring-1 ring-slate-200 hover:bg-white")} onClick={() => setActiveView(item.id)}>
+                <span className="block text-sm font-black">{item.label}</span>
+                <span className={cn("mt-1 block text-xs leading-5", activeView === item.id ? "text-slate-300" : "text-slate-500")}>{item.description}</span>
+              </button>
+            ))}
+          </nav>
         </aside>
 
         <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
