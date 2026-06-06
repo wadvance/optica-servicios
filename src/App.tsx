@@ -2077,14 +2077,14 @@ export default function App() {
               Proveedor
               <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={purchaseForm.supplier} onChange={(event) => setPurchaseForm((form) => ({ ...form, supplier: event.target.value }))} placeholder="Laboratorio o distribuidor" />
             </label>
-            <div className="grid gap-4 sm:grid-cols-[1fr_90px]">
+            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 RUC
                 <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={purchaseForm.ruc} onChange={(event) => setPurchaseForm((form) => ({ ...form, ruc: event.target.value }))} placeholder="RUC proveedor" />
               </label>
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 DV
-                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={purchaseForm.dv} onChange={(event) => setPurchaseForm((form) => ({ ...form, dv: event.target.value }))} />
+                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={purchaseForm.dv} onChange={(event) => setPurchaseForm((form) => ({ ...form, dv: event.target.value }))} placeholder="00" />
               </label>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
