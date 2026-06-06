@@ -143,7 +143,7 @@ const business = {
   owner: "Jorge Tello",
   ruc: "RUC demo pendiente",
   dv: "00",
-  address: "Panamá, David - Chiriquí",
+  address: "Calle Primera 401784, Ciudad de David",
   phone: "+507 6000-0000",
   celular: "66827364",
   fijo: "730 1045",
