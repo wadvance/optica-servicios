@@ -69,6 +69,7 @@ export type Customer = {
   dv: string;
   email: string;
   phone: string;
+  address: string;
   prescription: string;
   lastVisit: string;
   balance: number;
@@ -1004,7 +1005,7 @@ export default function App() {
   const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "Monturas", stock: "6", minStock: "3", price: "45" });
   const [purchaseForm, setPurchaseForm] = useState({ supplier: "", ruc: "", dv: "", items: "1", subtotal: "100" });
   const [serviceForm, setServiceForm] = useState({ service: "", provider: "", category: "Servicios publicos" as ServiceCategory, dueDate: "2026-06-30", amount: "0" });
-  const [customerForm, setCustomerForm] = useState({ name: "", document: "", dv: "", email: "", phone: "", prescription: "" });
+  const [customerForm, setCustomerForm] = useState({ name: "", document: "", dv: "", email: "", phone: "", address: "", prescription: "" });
   const [salesPeriod, setSalesPeriod] = useState<"dia" | "semana" | "mes">("dia");
   const [techFilter, setTechFilter] = useState("Todos");
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -1587,6 +1588,7 @@ export default function App() {
         dv: "00",
         email: "cliente@example.com",
         phone: "+507",
+        address: "",
         prescription: "Formula pendiente de registrar",
         lastVisit: todayDate(),
         balance: 0,
@@ -1715,6 +1717,7 @@ export default function App() {
       dv: customerForm.dv || "00",
       email: customerForm.email || "cliente@example.com",
       phone: customerForm.phone || "+507",
+      address: customerForm.address || "",
       prescription: customerForm.prescription || "Formula pendiente de registrar",
       lastVisit: todayDate(),
       balance: 0,
@@ -1725,7 +1728,7 @@ export default function App() {
       ...items,
       { id: `USR-${String(items.length + 1).padStart(3, "0")}`, name: nextCustomer.name, role: "Cliente", email: nextCustomer.email, status: "Activo" },
     ]);
-    setCustomerForm({ name: "", document: "", dv: "", email: "", phone: "", prescription: "" });
+    setCustomerForm({ name: "", document: "", dv: "", email: "", phone: "", address: "", prescription: "" });
   }
 
   function requestAppointment(event: FormEvent<HTMLFormElement>) {
@@ -1930,8 +1933,12 @@ export default function App() {
                   Precio
                   <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={scannerForm.price} onChange={(event) => setScannerForm((form) => ({ ...form, price: event.target.value }))} />
                 </label>
-              </div>
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
+            </div>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Direccion
+              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.address} onChange={(event) => setCustomerForm((form) => ({ ...form, address: event.target.value }))} placeholder="Calle, edificio, piso" />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Ubicacion
                 <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={scannerForm.location} onChange={(event) => setScannerForm((form) => ({ ...form, location: event.target.value }))} />
               </label>
