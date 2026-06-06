@@ -997,6 +997,9 @@ export default function App() {
   const [invoiceCustomerId, setInvoiceCustomerId] = useState(customers[0]?.id ?? "CLI-001");
   const [invoiceItemId, setInvoiceItemId] = useState(inventory[0]?.id ?? "INV-001");
   const [invoiceCustomerName, setInvoiceCustomerName] = useState(customers[0]?.name ?? "");
+  const [invoiceCustomerDoc, setInvoiceCustomerDoc] = useState("");
+  const [invoiceCustomerPhone, setInvoiceCustomerPhone] = useState("");
+  const [invoiceCustomerAddress, setInvoiceCustomerAddress] = useState("");
   const [invoiceQty, setInvoiceQty] = useState("1");
   const [invoicePayment, setInvoicePayment] = useState("Efectivo");
   const [applyItbms, setApplyItbms] = useState(true);
@@ -1584,11 +1587,11 @@ export default function App() {
       const newCustomer: Customer = {
         id: `CLI-${String(customers.length + 1).padStart(3, "0")}`,
         name: invoiceCustomerName.trim(),
-        document: "Consumidor final",
+        document: invoiceCustomerDoc.trim() || "Consumidor final",
         dv: "00",
         email: "cliente@example.com",
-        phone: "+507",
-        address: "",
+        phone: invoiceCustomerPhone.trim() || "+507",
+        address: invoiceCustomerAddress.trim() || "",
         prescription: "Formula pendiente de registrar",
         lastVisit: todayDate(),
         balance: 0,
@@ -1636,6 +1639,9 @@ export default function App() {
     setActiveInvoiceId(id);
     setInvoiceCustomerId("");
     setInvoiceCustomerName("");
+    setInvoiceCustomerDoc("");
+    setInvoiceCustomerPhone("");
+    setInvoiceCustomerAddress("");
   }
 
   function markInvoicePaid(id: string) {
@@ -2153,10 +2159,20 @@ export default function App() {
             <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr_120px_auto] lg:items-end">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Cliente
-                <input list="customer-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceCustomerName} onChange={(event) => { setInvoiceCustomerName(event.target.value); const found = customers.find((c) => c.name === event.target.value); setInvoiceCustomerId(found ? found.id : ""); }} placeholder="Escribe o selecciona un cliente" autoComplete="off" />
+                <input list="customer-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceCustomerName} onChange={(event) => { setInvoiceCustomerName(event.target.value); const found = customers.find((c) => c.name === event.target.value); setInvoiceCustomerId(found ? found.id : ""); if (found) { setInvoiceCustomerDoc(""); setInvoiceCustomerPhone(""); setInvoiceCustomerAddress(""); } }} placeholder="Escribe o selecciona un cliente" autoComplete="off" />
                 <datalist id="customer-list">
                   {customers.map((customer) => <option key={customer.id} value={customer.name} />)}
                 </datalist>
+                {!customers.some((c) => c.name === invoiceCustomerName) && invoiceCustomerName.trim() && (
+                  <div className="mt-2 grid gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 p-3">
+                    <p className="text-xs font-bold text-cyan-700">Nuevo cliente — completa los datos</p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <input className="rounded-xl border border-cyan-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceCustomerDoc} onChange={(event) => setInvoiceCustomerDoc(event.target.value)} placeholder="Cedula / RUC" />
+                      <input className="rounded-xl border border-cyan-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceCustomerPhone} onChange={(event) => setInvoiceCustomerPhone(event.target.value)} placeholder="Telefono" />
+                      <input className="rounded-xl border border-cyan-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceCustomerAddress} onChange={(event) => setInvoiceCustomerAddress(event.target.value)} placeholder="Direccion" />
+                    </div>
+                  </div>
+                )}
               </label>
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Producto o servicio
