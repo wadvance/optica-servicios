@@ -143,7 +143,7 @@ const business = {
   owner: "Jorge Tello",
   ruc: "RUC demo pendiente",
   dv: "00",
-  address: "Ciudad de Panamá, Panamá",
+  address: "Panamá, David - Chiriquí",
   phone: "+507 6000-0000",
   celular: "66827364",
   fijo: "730 1045",
@@ -2337,7 +2337,7 @@ export default function App() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200">
-                Cel {business.celular} / Fijo {business.fijo} · {business.address} · usuario {sessionUser}
+                Cel {business.celular} / Fijo {business.fijo} · {business.hours} · {business.address} · usuario {sessionUser}
               </div>
               <a className="rounded-2xl bg-emerald-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-emerald-600/20" href={whatsAppUrl(role === "Cliente" && activeClient ? `Hola, soy ${activeClient.name} y deseo comunicarme con la optica.` : undefined)} target="_blank" rel="noreferrer">
                 WhatsApp
