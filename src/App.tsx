@@ -1006,7 +1006,7 @@ export default function App() {
   const [applyItbms, setApplyItbms] = useState(true);
   const [draftLines, setDraftLines] = useState<InvoiceLine[]>([]);
   const [appointmentForm, setAppointmentForm] = useState({ date: "2026-06-21", reason: "Examen visual" });
-  const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "Monturas", stock: "6", minStock: "3", price: "45" });
+  const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "Monturas", sku: "", stock: "6", minStock: "3", cost: "", price: "45", supplier: "" });
   const [purchaseForm, setPurchaseForm] = useState({ supplier: "", ruc: "", dv: "", items: "1", subtotal: "100" });
   const [serviceForm, setServiceForm] = useState({ service: "", provider: "", category: "Servicios publicos" as ServiceCategory, dueDate: "2026-06-30", amount: "0" });
   const [customerForm, setCustomerForm] = useState({ name: "", document: "", dv: "", email: "", phone: "", address: "", prescription: "" });
@@ -1525,6 +1525,7 @@ export default function App() {
     const stock = Number(newInventoryItem.stock);
     const minStock = Number(newInventoryItem.minStock);
     const price = Number(newInventoryItem.price);
+    const cost = Number(newInventoryItem.cost) || Math.round(price * 0.45 * 100) / 100;
 
     if (!newInventoryItem.name.trim() || Number.isNaN(stock) || Number.isNaN(minStock) || Number.isNaN(price)) {
       return;
@@ -1534,13 +1535,13 @@ export default function App() {
     setInventory((items) => [
       {
         id: nextId,
-        sku: `${newInventoryItem.category.slice(0, 3).toUpperCase()}-${String(Date.now()).slice(-4)}`,
+        sku: newInventoryItem.sku.trim() || `${newInventoryItem.category.slice(0, 3).toUpperCase()}-${String(Date.now()).slice(-4)}`,
         name: newInventoryItem.name.trim(),
         category: newInventoryItem.category,
-        supplier: "Proveedor por asignar",
+        supplier: newInventoryItem.supplier.trim() || "Proveedor por asignar",
         stock,
         minStock,
-        cost: price * 0.45,
+        cost,
         price,
         taxRate: newInventoryItem.category === "Servicios clinicos" ? 0 : PANAMA_TAX_RATE,
         location: newInventoryItem.category === "Servicios clinicos" ? "Consultorio" : "Deposito",
@@ -1977,17 +1978,29 @@ export default function App() {
         <form className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80" onSubmit={addInventoryItem}>
           <h3 className="text-xl font-black text-slate-950">Registrar producto</h3>
           <div className="mt-5 grid gap-4">
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
-              Nombre
-              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.name} onChange={(event) => setNewInventoryItem((item) => ({ ...item, name: event.target.value }))} placeholder="Ej. Montura infantil" />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
-              Categoria
-              <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.category} onChange={(event) => setNewInventoryItem((item) => ({ ...item, category: event.target.value }))}>
-                {categories.filter((category) => category !== "Todas").map((category) => <option key={category}>{category}</option>)}
-              </select>
-            </label>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Nombre
+                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.name} onChange={(event) => setNewInventoryItem((item) => ({ ...item, name: event.target.value }))} placeholder="Ej. Montura infantil" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                SKU
+                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.sku} onChange={(event) => setNewInventoryItem((item) => ({ ...item, sku: event.target.value }))} placeholder="Ej. MON-001" />
+              </label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Categoria
+                <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.category} onChange={(event) => setNewInventoryItem((item) => ({ ...item, category: event.target.value }))}>
+                  {categories.filter((category) => category !== "Todas").map((category) => <option key={category}>{category}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Proveedor
+                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.supplier} onChange={(event) => setNewInventoryItem((item) => ({ ...item, supplier: event.target.value }))} placeholder="Nombre del proveedor" />
+              </label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Stock
                 <input type="number" min="0" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.stock} onChange={(event) => setNewInventoryItem((item) => ({ ...item, stock: event.target.value }))} />
@@ -1996,9 +2009,15 @@ export default function App() {
                 Minimo
                 <input type="number" min="0" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.minStock} onChange={(event) => setNewInventoryItem((item) => ({ ...item, minStock: event.target.value }))} />
               </label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Precio
-                <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.price} onChange={(event) => setNewInventoryItem((item) => ({ ...item, price: event.target.value }))} />
+                Precio de venta
+                <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.price} onChange={(event) => setNewInventoryItem((item) => ({ ...item, price: event.target.value }))} placeholder="B/. 0.00" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Costo
+                <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.cost} onChange={(event) => setNewInventoryItem((item) => ({ ...item, cost: event.target.value }))} placeholder="B/. 0.00" />
               </label>
             </div>
             <button className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20">Agregar al inventario</button>
