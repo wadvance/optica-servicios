@@ -2033,7 +2033,7 @@ export default function App() {
           </div>
 
           <div className="mt-5 overflow-hidden rounded-[1.5rem] border border-slate-200">
-            <div className="hidden grid-cols-[1fr_90px_90px_105px_120px] bg-slate-950 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-white md:grid">
+            <div className="hidden grid-cols-[1fr_90px_90px_90px_120px] bg-slate-950 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-white md:grid">
               <span>Producto</span>
               <span>Stock</span>
               <span>Min.</span>
@@ -2042,7 +2042,7 @@ export default function App() {
             </div>
             <div className="divide-y divide-slate-200 bg-white">
               {visibleInventory.map((item) => (
-                <div key={item.id} className="grid gap-4 px-5 py-4 md:grid-cols-[1fr_90px_90px_105px_120px] md:items-center">
+                <div key={item.id} className="grid gap-4 px-5 py-4 md:grid-cols-[1fr_90px_90px_90px_120px] md:items-center">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-black text-slate-950">{item.name}</p>
