@@ -713,10 +713,6 @@ function AuthScreen({
               {mode === "registro" ? "Crear usuario e ingresar" : "Ingresar"}
             </button>
           </form>
-
-          <p className="mt-5 text-xs leading-5 text-slate-500">
-            Prototipo local: para produccion se debe usar autenticacion con backend, cifrado y permisos por rol.
-          </p>
         </section>
       </main>
     </div>
