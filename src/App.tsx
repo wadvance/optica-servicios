@@ -2337,8 +2337,11 @@ export default function App() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200">
-                Cel {business.celular} / Fijo {business.fijo} · {business.hours} · {business.address} · usuario {sessionUser}
+                {business.hours} · Cel {business.celular} / Fijo {business.fijo} · {business.address} · usuario {sessionUser}
               </div>
+              <a className="rounded-2xl bg-cyan-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-cyan-600/20" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address)}`} target="_blank" rel="noreferrer">
+                Ubicacion
+              </a>
               <a className="rounded-2xl bg-emerald-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-emerald-600/20" href={whatsAppUrl(role === "Cliente" && activeClient ? `Hola, soy ${activeClient.name} y deseo comunicarme con la optica.` : undefined)} target="_blank" rel="noreferrer">
                 WhatsApp
               </a>
