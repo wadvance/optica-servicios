@@ -4,7 +4,6 @@ import { cn } from "./utils/cn";
 import { supabase } from "./lib/supabase";
 import { sendRegistrationEmail } from "./lib/email";
 import { loadAllSeedData, saveInventory, savePurchases, saveServicePayments, saveCustomers, saveInvoices, saveAppointments, saveUserAccounts } from "./lib/supabase-data";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 type Role = "Administrador" | "Cliente";
 type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "avances" | "servicios" | "usuarios" | "cumplimiento" | "ia" | "resultados";
@@ -1810,15 +1809,7 @@ export default function App() {
           {salesChartData.length === 0 ? (
             <p className="py-10 text-center text-sm text-slate-500">No hay ventas en este periodo.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={salesChartData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} tickFormatter={(v) => `B/.${v}`} />
-                <Tooltip formatter={(value: number) => [`B/.${value.toFixed(2)}`, "Total"]} labelFormatter={(label) => `Fecha: ${label}`} contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
-                <Bar dataKey="total" fill="#0f172a" radius={[6, 6, 0, 0]} maxBarSize={48} />
-              </BarChart>
-            </ResponsiveContainer>
+            <p className="py-10 text-center text-sm text-slate-500">Grafico de ventas deshabilitado temporalmente (debugging).</p>
           )}
         </div>
       </section>
