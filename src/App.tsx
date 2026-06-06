@@ -3,6 +3,7 @@ import { cn } from "./utils/cn";
 import { supabase } from "./lib/supabase";
 import { sendRegistrationEmail } from "./lib/email";
 import { loadAllSeedData, saveInventory, savePurchases, saveServicePayments, saveCustomers, saveInvoices, saveAppointments, saveUserAccounts } from "./lib/supabase-data";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 type Role = "Administrador" | "Cliente";
 type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "avances" | "servicios" | "usuarios" | "cumplimiento";
@@ -797,6 +798,7 @@ export default function App() {
   const [purchaseForm, setPurchaseForm] = useState({ supplier: "", ruc: "", dv: "", items: "1", subtotal: "100" });
   const [serviceForm, setServiceForm] = useState({ service: "", provider: "", category: "Servicios publicos" as ServiceCategory, dueDate: "2026-06-30", amount: "0" });
   const [customerForm, setCustomerForm] = useState({ name: "", document: "", dv: "", email: "", phone: "", prescription: "" });
+  const [salesPeriod, setSalesPeriod] = useState<"dia" | "semana" | "mes">("dia");
   const [techFilter, setTechFilter] = useState("Todos");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -954,6 +956,36 @@ export default function App() {
   const salesTax = invoices.reduce((sum, invoice) => (invoice.status === "Borrador" ? sum : sum + invoiceTotals(invoice.lines).tax), 0);
   const purchaseTax = purchases.reduce((sum, purchase) => (purchase.status === "Pendiente" ? sum : sum + purchase.tax), 0);
   const salesTotal = invoices.reduce((sum, invoice) => (invoice.status === "Borrador" ? sum : sum + invoiceTotals(invoice.lines).total), 0);
+
+  const completedInvoices = useMemo(() => invoices.filter((inv) => inv.status !== "Borrador"), [invoices]);
+
+  const salesChartData = useMemo(() => {
+    const groups: Record<string, number> = {};
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const formatMonth = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const formatWeek = (d: Date) => {
+      const weekStart = new Date(d);
+      weekStart.setDate(d.getDate() - d.getDay());
+      return `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, "0")}-${String(weekStart.getDate()).padStart(2, "0")}`;
+    };
+    completedInvoices.forEach((inv) => {
+      const d = new Date(inv.date + "T00:00:00");
+      let key: string;
+      if (salesPeriod === "dia") key = inv.date;
+      else if (salesPeriod === "semana") {
+        if (d < startOfWeek) return;
+        key = formatWeek(d);
+      } else {
+        key = formatMonth(d);
+      }
+      groups[key] = (groups[key] || 0) + invoiceTotals(inv.lines).total;
+    });
+    return Object.entries(groups)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, total]) => ({ date, total: Math.round(total * 100) / 100 }));
+  }, [completedInvoices, salesPeriod]);
   const pendingServices = servicePayments.filter((payment) => payment.status !== "Pagado");
   const pendingCustomerBalance = customers.reduce((sum, customer) => sum + customer.balance, 0);
   const serviceExpenses = servicePayments.reduce((sum, p) => sum + p.amount, 0);
@@ -1410,6 +1442,37 @@ export default function App() {
             <p className={cn("mt-3 text-2xl font-black", netIncome >= 0 ? "text-cyan-900" : "text-rose-900")}>{formatMoney(netIncome)}</p>
             <p className={cn("mt-2 text-sm", netIncome >= 0 ? "text-cyan-700" : "text-rose-700")}>{netIncome >= 0 ? "Ganancia en el periodo" : "Perdida en el periodo"}</p>
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80 backdrop-blur">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-xl font-black text-slate-950">Ventas por periodo</h3>
+            <p className="mt-1 text-sm text-slate-600">Distribucion de ventas agrupadas por {salesPeriod === "dia" ? "dia" : salesPeriod === "semana" ? "semana" : "mes"}.</p>
+          </div>
+          <div className="flex gap-2 rounded-full bg-slate-100 p-1">
+            {(["dia", "semana", "mes"] as const).map((period) => (
+              <button key={period} className={cn("rounded-full px-4 py-2 text-sm font-black transition", salesPeriod === period ? "bg-slate-950 text-white shadow-lg" : "text-slate-600 hover:bg-slate-200")} onClick={() => setSalesPeriod(period)}>
+                {period === "dia" ? "Dia" : period === "semana" ? "Semana" : "Mes"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-6">
+          {salesChartData.length === 0 ? (
+            <p className="py-10 text-center text-sm text-slate-500">No hay ventas en este periodo.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={salesChartData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} tickFormatter={(v) => `B/.${v}`} />
+                <Tooltip formatter={(value: number) => [`B/.${value.toFixed(2)}`, "Total"]} labelFormatter={(label) => `Fecha: ${label}`} contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
+                <Bar dataKey="total" fill="#0f172a" radius={[6, 6, 0, 0]} maxBarSize={48} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </section>
     </div>
