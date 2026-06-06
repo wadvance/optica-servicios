@@ -997,6 +997,7 @@ export default function App() {
   const [invoiceItemId, setInvoiceItemId] = useState(inventory[0]?.id ?? "INV-001");
   const [invoiceQty, setInvoiceQty] = useState("1");
   const [invoicePayment, setInvoicePayment] = useState("Efectivo");
+  const [applyItbms, setApplyItbms] = useState(true);
   const [draftLines, setDraftLines] = useState<InvoiceLine[]>([]);
   const [appointmentForm, setAppointmentForm] = useState({ date: "2026-06-21", reason: "Examen visual" });
   const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "Monturas", stock: "6", minStock: "3", price: "45" });
@@ -1559,7 +1560,7 @@ export default function App() {
         description: item.name,
         qty,
         unitPrice: item.price,
-        taxRate: item.taxRate,
+        taxRate: applyItbms ? item.taxRate : 0,
       },
     ]);
     setInvoiceQty("1");
@@ -2133,6 +2134,7 @@ export default function App() {
                 Cant.
                 <input type="number" min="1" step="1" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceQty} onChange={(event) => setInvoiceQty(event.target.value)} />
               </label>
+              <button className={cn("rounded-2xl px-5 py-3 font-black text-white shadow-lg transition", applyItbms ? "bg-amber-600 shadow-amber-600/20" : "bg-slate-400 shadow-slate-400/20")} onClick={() => setApplyItbms(!applyItbms)}>ITBMS {applyItbms ? "ON" : "OFF"}</button>
               <button className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20" onClick={addInvoiceLine}>Agregar</button>
             </div>
 
