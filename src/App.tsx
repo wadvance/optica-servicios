@@ -2336,7 +2336,7 @@ export default function App() {
               <p className="mt-1 text-lg font-black text-slate-950">{role === "Administrador" ? business.owner : activeClient?.name ?? "Cliente"}</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <p className="text-sm font-black italic text-slate-500">Tu vision, nuestra prioridad</p>
+              <p className="text-sm font-black italic text-slate-500">Cuidamos tu salud visual con profesionalismo y calidez. Porque ver bien es vivir mejor.</p>
               <a className="rounded-2xl bg-cyan-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-cyan-600/20" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address)}`} target="_blank" rel="noreferrer">
                 Ubicacion
               </a>
