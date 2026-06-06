@@ -616,13 +616,17 @@ function AuthScreen({
   onLogin: (username: string, password: string) => string;
 }) {
   const [mode, setMode] = useState<AuthMode>(registeredUser ? "ingreso" : "registro");
-  const [form, setForm] = useState({ email: registeredUser?.email ?? "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [message, setMessage] = useState("");
   const rules = passwordRules(form.password);
 
   useEffect(() => {
     setMode(registeredUser ? "ingreso" : "registro");
-    setForm((current) => ({ ...current, email: registeredUser?.email ?? current.email }));
+    if (registeredUser) {
+      setForm({ email: registeredUser.email, password: "" });
+    } else {
+      setForm({ email: "", password: "" });
+    }
   }, [registeredUser]);
 
   function submitAuth(event: FormEvent<HTMLFormElement>) {
@@ -659,10 +663,10 @@ function AuthScreen({
 
         <section className="reveal-up rounded-[2rem] bg-white/85 p-6 shadow-2xl shadow-slate-300/50 ring-1 ring-slate-200 backdrop-blur sm:p-8">
           <div className="grid grid-cols-2 gap-2 rounded-full bg-slate-100 p-1">
-            <button className={cn("rounded-full px-4 py-3 text-sm font-black transition", mode === "registro" ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => setMode("registro")}>
+            <button className={cn("rounded-full px-4 py-3 text-sm font-black transition", mode === "registro" ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => { setMode("registro"); setForm({ email: "", password: "" }); }}>
               Registro
             </button>
-            <button className={cn("rounded-full px-4 py-3 text-sm font-black transition", mode === "ingreso" ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => setMode("ingreso")} disabled={!registeredUser}>
+            <button className={cn("rounded-full px-4 py-3 text-sm font-black transition", mode === "ingreso" ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => { setMode("ingreso"); setForm({ email: registeredUser?.email ?? "", password: "" }); }} disabled={!registeredUser}>
               Ingreso
             </button>
           </div>
@@ -689,7 +693,7 @@ function AuthScreen({
                     type="password"
                     value={form.password}
                     onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                    placeholder="Optica1!"
+                    placeholder="Escribe tu contrasena"
                 autoComplete={mode === "registro" ? "new-password" : "current-password"}
               />
             </label>
