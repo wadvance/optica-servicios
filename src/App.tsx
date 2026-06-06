@@ -160,7 +160,7 @@ const adminNav: { id: AdminView; label: string; description: string }[] = [
   { id: "servicios", label: "Pagos", description: "Servicios y vencimientos" },
   { id: "usuarios", label: "Usuarios", description: "Administrador y clientes" },
   { id: "cumplimiento", label: "Panama", description: "DGI, SFEP e ITBMS" },
-  { id: "ia", label: "Buscador IA", description: "Informacion de optica y tecnologia" },
+  { id: "ia", label: "Conocimiento", description: "Guia optica y tecnologia" },
 ];
 
 const clientNav: { id: ClientView; label: string; description: string }[] = [
@@ -792,35 +792,164 @@ export default function App() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState("");
   const [aiError, setAiError] = useState("");
-  const [aiKeyInput, setAiKeyInput] = useState(localStorage.getItem("gemini_key") || "");
 
-  const handleAISearch = useCallback(async (query: string) => {
+  const knowledgeBase = useMemo(() => [
+    {
+      keywords: ["progresivo", "progresivos", "multifocal", "vision cercana", "vision lejana"],
+      title: "Lentes Progresivos",
+      content: "Los lentes progresivos (multifocales) corrigen vista cercana, intermedia y lejana sin lineas visibles. Ideales para presbicia. Tecnologias: Free-Form (digital) ofrece mejor campo visual. Marcas: Varilux, Zeiss Progressive, Hoyalux, Shamir Autograph. El periodo de adaptacion es de 1 a 2 semanas."
+    },
+    {
+      keywords: ["bifocal", "bifocales", "linea visible"],
+      title: "Lentes Bifocales",
+      content: "Los bifocales tienen dos campos separados por una linea visible: parte superior para lejos, inferior para cerca. Son mas economicos que los progresivos pero menos esteticos. Recomendados para pacientes que no se adaptan a progresivos."
+    },
+    {
+      keywords: ["monofocal", "monofocales", "simple vista", "un solo campo"],
+      title: "Lentes Monofocales",
+      content: "Los lentes monofocales tienen un solo poder en toda la superficie. Se usan para miopia (dificultad para ver lejos), hipermetropia (dificultad para ver cerca) o astigmatismo. Son los lentes mas basicos y economicos."
+    },
+    {
+      keywords: ["fotocromatico", "fotocromaticos", "fotosensible", "transitions", "luz solar", "oscuras"],
+      title: "Lentes Fotocromaticos (Transitions)",
+      content: "Los lentes fotocromaticos se oscurecen automaticamente con la luz UV y se aclaran en interiores. Tecnologia Transitions Signature Gen 8: mas rapidos y oscuros que generaciones anteriores. Tambien hay lentes fotocromaticos de policarbonato y alto indice. Ideales para quienes pasan tiempo dentro y fuera."
+    },
+    {
+      keywords: ["polarizado", "polarizados", "reflejo", "encandilamiento", "manejo", "conducir"],
+      title: "Lentes Polarizados",
+      content: "Los lentes polarizados eliminan el resplandor y reflejos horizontales (agua, nieve, pavimento). Ideales para conducir, pesca, deportes acuaticos y nieve. No recomendados para ver pantallas LCD (pueden verse distorsionadas). Combaten la fatiga visual por brillo excesivo."
+    },
+    {
+      keywords: ["luz azul", "filtro azul", "pantalla", "computadora", "fatiga visual", "blue cut"],
+      title: "Filtro de Luz Azul (Blue Cut)",
+      content: "Los lentes con filtro de luz azul bloquean la luz HEV (alta energia visible) emitida por pantallas digitales. Reducen fatiga visual, dolores de cabeza y mejoran el sueno. Recomendados para personas que pasan mas de 4 horas frente a pantallas. Tienen un leve tono amarillo/ambar."
+    },
+    {
+      keywords: ["antireflejo", "anti reflejo", "antirreflejante", "ar", "reflejos"],
+      title: "Tratamiento Antireflejo (AR)",
+      content: "El tratamiento antireflejo elimina los reflejos en la superficie del lente, mejorando la vision nocturna y la estetica. Reduce la fatiga visual. Capas adicionales: hidrofobica (repele agua), oleofobica (repele grasa), anti-rayas, anti-estatica. Es el tratamiento mas recomendado."
+    },
+    {
+      keywords: ["policarbonato", "policarbonato", "impacto", "seguridad", "deportes", "ninos", "niños"],
+      title: "Lentes de Policarbonato",
+      content: "El policarbonato es un material ligero y resistente a impactos (10x mas que plastico regular). Ideal para ninos, deportes, seguridad laboral. Bloquea 100% UV. Indice de refraccion 1.59. Desventaja: menor claridad optica que el alto indice."
+    },
+    {
+      keywords: ["alto indice", "alto índice", "1.67", "1.74", "1.76", "delgado", "liviano"],
+      title: "Lentes de Alto Indice",
+      content: "Los lentes de alto indice (1.67, 1.74, 1.76) son mas delgados y livianos que los convencionales. Ideales para graduaciones altas (mas de -4.00 o +4.00). Indice 1.74: hasta 50% mas delgado que plastico regular. Indice 1.76: el mas delgado disponible."
+    },
+    {
+      keywords: ["trivex", "trivex"],
+      title: "Lentes Trivex",
+      content: "El Trivex es un material similar al policarbonato pero con mejor claridad optica. Resistente a impactos, bloquea 100% UV, mas liviano que el policarbonato. Ideal para graduaciones moderadas y deportes."
+    },
+    {
+      keywords: ["acetato", "acetato", "montura", "carey", "ecologico"],
+      title: "Monturas de Acetato",
+      content: "Las monturas de acetato son las mas populares. Material derivado de celulosa (ecologico). Hipoalergenico, disponible en miles de colores y patrones. Marcas: Ray-Ban, Oakley, Persol. El acetato de calidad (italiano, japones) dura anos."
+    },
+    {
+      keywords: ["titanio", "titanio", "metal", "montura metalica", "hipoalergenico"],
+      title: "Monturas de Titanio",
+      content: "Las monturas de titanio son ultra-livianas, resistentes a la corrosion e hipoalergenicas. Ideales para pieles sensibles. Flexon (aleacion con memoria) recupera su forma al doblarse. Beta-titanio: mas flexible que el titanio puro."
+    },
+    {
+      keywords: ["lentes contacto", "contacto", "contactologia", "blandos", "rigidos", "desechables"],
+      title: "Lentes de Contacto",
+      content: "Tipos: blandos (hidrogel, silicon hidrogel), rigidos permeables a gas (RPG), especiales (esclerales, toricos, multifocales). Los de silicon hidrogel permiten 5x mas oxigeno que los convencionales. Desechables diarios: mayor higiene y comodidad. RPG: mejor agudeza visual para astigmatismo irregular."
+    },
+    {
+      keywords: ["lentes niños", "lentes ninos", "infantil", "ninos miopia", "control miopia"],
+      title: "Control de Miopia en Ninos",
+      content: "Tecnologias para controlar la progresion de miopia infantil: lentes Stellest (Essilor), MiyoSmart (Hoya), lentes de contacto blandos MiSight, atropina en baja dosis. Ortokeratologia (lentes RPG nocturnos). La deteccion temprana es clave para evitar miopia alta en adultos."
+    },
+    {
+      keywords: ["lentes deporte", "deportivos", "gafas deporte", "running", "ciclismo"],
+      title: "Lentes Deportivos",
+      content: "Caracteristicas: monturas envolventes, material resistente a impactos (policarbonato/Trivex), agarre antideslizante, ventilacion para evitar empanamiento. Lentes intercambiables para diferentes condiciones de luz. Marcas: Oakley, Rudy Project, Julbo, Adidas Sport."
+    },
+    {
+      keywords: ["lentes soldar", "soldadura", "seguridad laboral", "proteccion uv"],
+      title: "Lentes de Seguridad Laboral",
+      content: "Normas ANSI Z87.1 (EEUU) y CE EN 166 (Europa). Tipos: anti-impacto, anti-quimicos, para soldar (filtro IR/UV). Lentes con proteccion lateral, armazon resistente. Lentes de seguridad graduados disponibles."
+    },
+    {
+      keywords: ["lentes sol", "sol", "gafas sol", "ray ban", "polarizado uv"],
+      title: "Gafas de Sol",
+      content: "Categoria de proteccion UV: 0 (cosmetico) a 4 (glaciar). Buscar sello UV400 (bloquea 99-100% UVA/UVB). Polarizados: eliminan reflejos. Espectro electromagnetico: UV (100-400nm), luz visible (400-700nm), IR (700nm+). La proteccion UV no depende del color del lente."
+    },
+    {
+      keywords: ["varilux", "zeiss", "hoya", "essilor", "shamir", "nikon", "rodentstock"],
+      title: "Marcas de Lentes",
+      content: "Essilor (Varilux, Crizal, Transitions) - lider mundial. Zeiss (precision alemana, BlueGuard). Hoya (MiyoSmart, Nulux). Shamir (Autograph, Glacier). Nikon (SeeCoat). Rodenstock (DNEye). Cada marca tiene tecnologias exclusivas de tratamiento y diseno digital."
+    },
+    {
+      keywords: ["crizal", "tratamiento", "sapphire", "rock", "essilor"],
+      title: "Tratamientos Crizal (Essilor)",
+      content: "Crizal Rock: resistencia a rayaduras (5x mas duro). Crizal Sapphire: el mas resistente (36% menos reflejos). Crizal Prevencia: filtra luz azul. Crizal Easy: relacion calidad-precio. Todos incluyen antireflejo, hidrofobico, oleofobico, anti-estatico y proteccion UV."
+    },
+    {
+      keywords: ["graduacion", "receta", "prescripcion", "esfera", "cilindro", "eje", "adicion"],
+      title: "Como leer una Receta Optica",
+      content: "Esfera (SPH): graduacion de miopia (-) o hipermetropia (+). Cilindro (CYL): cantidad de astigmatismo. Eje (AXIS): orientacion del astigmatismo (0-180°). Adicion (ADD): poder extra para cerca (progresivos/bifocales). Distancia interpupilar (DIP/PD): separacion entre pupilas."
+    },
+    {
+      keywords: ["antiniebla", "anti niebla", "anti fog", "antivaho", "empanamiento"],
+      title: "Tratamiento Antiniebla (Anti-Fog)",
+      content: "Los lentes con tratamiento anti-fog evitan el empanamiento por cambios de temperatura. Ideal para mascarillas, deportes, clima frio. Marcas: OptiPlus Anti-Fog, Zeiss Anti-Fog. Tambien existen sprays y toallitas anti-fog para aplicar sobre lentes existentes."
+    },
+    {
+      keywords: ["lentes inteligentes", "smart glasses", "realidad aumentada", "tecnologia"],
+      title: "Gafas Inteligentes y Realidad Aumentada",
+      content: "Ultimas innovaciones: Ray-Ban Meta (camara, audio, IA), Xreal Air (AR portatil), Apple Vision Pro (computacion espacial). Lentes con pantalla integrada para navegacion, traduccion y notificaciones. La tecnologia de guia de onda (waveguide) permite superponer informacion digital sin obstruir la vision."
+    },
+    {
+      keywords: ["impresion 3d", "3d", "montura impresa", "personalizada"],
+      title: "Monturas Impresas en 3D",
+      content: "La impresion 3D permite monturas personalizadas segun la topografia facial del usuario. Materiales: nylon (poliamida), resina. Ventajas: ajuste perfecto, disenos imposibles con metodos tradicionales, produccion bajo demanda. Marcas: Monoqool, YouMawo, Hoet."
+    },
+    {
+      keywords: ["lentes organicos", "sustentable", "ecologico", "eco friendly", "bambu"],
+      title: "Lentes y Monturas Ecologicas",
+      content: "Monturas biodegradables: acetato natural (Mazzucchelli), bambu, madera reciclada, plastico oceánico reciclado. Lentes organicos: materiales bio-based. Marcas sustentables: Eco Eyewear, Proof, Sea2See. Packaging reciclable y procesos de produccion carbono neutral."
+    },
+    {
+      keywords: ["lentes niños", "montura infantil", "flexible", "seguridad infantil"],
+      title: "Monturas Infantiles",
+      content: "Caracteristicas: material flexible (memoria), varillas ajustables, sin piezas metalicas pequeñas, puente nasal adaptado a rostros infantiles. Marcas: Ray-Ban Junior, Nike Kids, Flexi Kids. Recomendacion: lentes de policarbonato por resistencia a impactos y liviandad."
+    },
+    {
+      keywords: ["intolerancia", "alergia", "alergico", "niquel", "piel sensible"],
+      title: "Lentes para Piel Sensible (Hipoalergenicos)",
+      content: "Monturas hipoalergenicas: titanio (puro o beta), acetato, acero inoxidable quirurgico, plastica flexon (memoria). Evitar niquel, cobalto y cromo. Tratamiento antialergico disponible en algunas monturas."
+    },
+  ], []);
+
+  const handleAISearch = useCallback((query: string) => {
     setAiLoading(true);
     setAiError("");
     setAiResult("");
-    const key = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem("gemini_key") || "";
-    if (!key) { setAiError("Configura la clave de Gemini en el campo de abajo o como VITE_GEMINI_API_KEY"); setAiLoading(false); return; }
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{
-            role: "user",
-            parts: [{ text: `Eres un experto en optica, lentes, monturas y tecnologia visual. Responde de forma clara y concisa en espanol a esta consulta de un optico profesional: ${query}` }]
-          }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message ?? "Error al consultar la IA");
-      setAiResult(data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Sin respuesta.");
-    } catch (err) {
-      setAiError(err instanceof Error ? err.message : "Error de conexion");
-    } finally {
-      setAiLoading(false);
+    const q = query.toLowerCase().trim();
+    const words = q.split(/\s+/);
+    const scored = knowledgeBase.map(entry => {
+      let score = 0;
+      for (const word of words) {
+        for (const kw of entry.keywords) {
+          if (kw.includes(word) || word.includes(kw)) score += 3;
+          if (entry.content.toLowerCase().includes(word)) score += 1;
+        }
+      }
+      return { ...entry, score };
+    });
+    const best = scored.filter(e => e.score > 0).sort((a, b) => b.score - a.score);
+    if (best.length > 0) {
+      setAiResult(best.slice(0, 3).map(e => `**${e.title}**\n${e.content}`).join("\n\n---\n\n"));
+    } else {
+      setAiResult("No encontre informacion sobre esa consulta en mi base de conocimiento. Temas disponibles: tipos de lentes (progresivos, bifocales, monofocales), materiales (policarbonato, alto indice, Trivex), tratamientos (antireflejo, fotocromatico, polarizado, luz azul), monturas (acetato, titanio), marcas, lentes de contacto, control de miopia, gafas de sol, tecnologia optica y mas.");
     }
-  }, []);
+    setAiLoading(false);
+  }, [knowledgeBase]);
 
   const [inventoryQuery, setInventoryQuery] = useState("");
   const [inventoryCategory, setInventoryCategory] = useState("Todas");
@@ -2312,25 +2441,18 @@ export default function App() {
   const aiSearchView = (
     <div className="space-y-6">
       <section className="rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/50 ring-1 ring-slate-200/80">
-        <h2 className="mb-4 text-xl font-black text-slate-950">Buscador IA</h2>
-        <p className="mb-6 text-sm text-slate-500">Pregunta sobre lentes, monturas, tecnologia optica, marcas, tendencias o cualquier tema relacionado.</p>
-        <details className="mb-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
-          <summary className="cursor-pointer text-xs font-black text-slate-500">Configurar clave de IA</summary>
-          <div className="mt-3 flex gap-2">
-            <input value={aiKeyInput} onChange={(e) => { setAiKeyInput(e.target.value); localStorage.setItem("gemini_key", e.target.value); }} className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" placeholder="Clave API de Gemini" />
-            <span className="self-center text-xs text-emerald-600 font-black">✓ Guardada</span>
-          </div>
-        </details>
+        <h2 className="mb-4 text-xl font-black text-slate-950">Conocimiento Optico</h2>
+        <p className="mb-6 text-sm text-slate-500">Busca informacion sobre lentes, monturas, tratamientos, tecnologia optica, marcas y mas. No necesita internet.</p>
         <form onSubmit={(e) => { e.preventDefault(); if (aiQuery.trim()) handleAISearch(aiQuery); }}>
           <div className="flex gap-3">
-            <input name="q" value={aiQuery} onChange={(e) => setAiQuery(e.target.value)} className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" placeholder="Ej: tipos de lentes progresivos, ultimas tecnologias en gafas..." />
+            <input name="q" value={aiQuery} onChange={(e) => setAiQuery(e.target.value)} className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" placeholder="Ej: lentes progresivos, filtro luz azul, monturas de titanio..." />
             <button type="submit" disabled={aiLoading} className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-950/15 transition hover:bg-slate-800 disabled:opacity-50">{aiLoading ? "Buscando..." : "Buscar"}</button>
           </div>
         </form>
         {aiError && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-200">{aiError}</p>}
         {aiResult && (
           <div className="mt-6 rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-200">
-            <div className="prose prose-slate max-w-none text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{aiResult}</div>
+            <div className="max-w-none text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{aiResult}</div>
           </div>
         )}
       </section>
