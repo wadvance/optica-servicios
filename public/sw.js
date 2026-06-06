@@ -1,4 +1,4 @@
-const CACHE_NAME = "sop-optica-v1";
+const CACHE_NAME = "sop-optica-v2";
 const ASSETS = ["/", "/manifest.webmanifest", "/app-icon.svg"];
 
 self.addEventListener("install", (event) => {
