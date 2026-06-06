@@ -629,9 +629,9 @@ function AuthScreen({
     }
   }, [registeredUser]);
 
-  function submitAuth(event: FormEvent<HTMLFormElement>) {
+  async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = mode === "registro" ? onRegister(form.email, form.password) : onLogin(form.email, form.password);
+    const result = await (mode === "registro" ? onRegister(form.email, form.password) : onLogin(form.email, form.password));
     setMessage(result);
   }
 
