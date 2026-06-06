@@ -143,7 +143,7 @@ const business = {
   owner: "Jorge Tello",
   ruc: "RUC demo pendiente",
   dv: "00",
-  address: "Calle Primera 401784, Ciudad de David",
+  address: "Calle C Nte. 454-11, David",
   phone: "+507 6000-0000",
   celular: "66827364",
   fijo: "730 1045",
@@ -2337,7 +2337,7 @@ export default function App() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <p className="text-sm font-black italic text-slate-500">Cuidamos tu salud visual con profesionalismo y calidez. Porque ver bien es vivir mejor.</p>
-              <a className="rounded-2xl bg-cyan-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-cyan-600/20" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address)}`} target="_blank" rel="noreferrer">
+              <a className="rounded-2xl bg-cyan-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-cyan-600/20" href={`https://www.google.com/maps/search/?api=1&query=8.430183,-82.426391`} target="_blank" rel="noreferrer">
                 Ubicacion
               </a>
               <a className="rounded-2xl bg-emerald-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-emerald-600/20" href={whatsAppUrl(role === "Cliente" && activeClient ? `Hola, soy ${activeClient.name} y deseo comunicarme con la optica.` : undefined)} target="_blank" rel="noreferrer">
