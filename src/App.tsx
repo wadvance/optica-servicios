@@ -6,7 +6,7 @@ import { sendRegistrationEmail } from "./lib/email";
 import { loadAllSeedData, saveInventory, savePurchases, saveServicePayments, saveCustomers, saveInvoices, saveAppointments, saveUserAccounts } from "./lib/supabase-data";
 
 type Role = "Administrador" | "Cliente";
-type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "avances" | "servicios" | "usuarios" | "cumplimiento" | "ia" | "resultados";
+type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "historias" | "avances" | "servicios" | "usuarios" | "cumplimiento" | "ia" | "resultados";
 type ClientView = "portal" | "mis-facturas" | "recetas" | "citas" | "resultados";
 type View = AdminView | ClientView;
 
@@ -176,6 +176,7 @@ const adminNav: { id: AdminView; label: string; description: string }[] = [
   { id: "inventario", label: "Inventario", description: "Monturas, lentes y accesorios" },
   { id: "compras", label: "Compras", description: "Proveedores y credito fiscal" },
   { id: "facturacion", label: "Facturacion", description: "Cliente, CUFE y CAFE" },
+  { id: "historias", label: "Historias Clinicas", description: "Examenes, recetas y facturas" },
   { id: "avances", label: "Avances", description: "Tecnologia en lentes y gafas" },
   { id: "servicios", label: "Pagos", description: "Servicios y vencimientos" },
   { id: "usuarios", label: "Clientes", description: "Administrador y clientes" },
@@ -2837,11 +2838,135 @@ export default function App() {
     </div>
   );
 
+  const clinicalHistoriesView = (
+    <div className="space-y-8">
+      <SectionTitle title="Historias Clinicas" subtitle="Historial completo de examenes visuales, facturas y datos del paciente." />
+      <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+        <div className="space-y-4">
+          <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
+            <h3 className="text-xl font-black text-slate-950">Paciente</h3>
+            <label className="mt-4 grid gap-2 text-sm font-bold text-slate-700">
+              Seleccionar cliente
+              <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={activeClientId} onChange={(e) => setActiveClientId(e.target.value)}>
+                {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
+              </select>
+            </label>
+          </div>
+          {(() => {
+            const patient = customers.find((c) => c.id === activeClientId);
+            if (!patient) return null;
+            const patientExams = examResults.filter((e) => e.customerId === patient.id);
+            const patientInvoices = invoices.filter((i) => i.customerId === patient.id);
+            return (
+              <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
+                <h3 className="text-lg font-black text-slate-950">{patient.name}</h3>
+                <div className="mt-3 space-y-2 text-sm">
+                  <p><span className="font-bold text-slate-700">Cedula:</span> {patient.document}</p>
+                  <p><span className="font-bold text-slate-700">Telefono:</span> {patient.phone}</p>
+                  {patient.address && <p><span className="font-bold text-slate-700">Direccion:</span> {patient.address}</p>}
+                  <p><span className="font-bold text-slate-700">Ultima visita:</span> {formatDate(patient.lastVisit)}</p>
+                  <p><span className="font-bold text-slate-700">Formula:</span> {patient.prescription}</p>
+                  <p><span className="font-bold text-slate-700">Saldo pendiente:</span> {formatMoney(patient.balance)}</p>
+                </div>
+                <div className="mt-4 flex gap-4 text-sm">
+                  <div className="rounded-2xl bg-cyan-50 px-4 py-3 ring-1 ring-cyan-200">
+                    <p className="text-xs font-black text-cyan-700">Examenes</p>
+                    <p className="text-xl font-black text-cyan-900">{patientExams.length}</p>
+                  </div>
+                  <div className="rounded-2xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-200">
+                    <p className="text-xs font-black text-emerald-700">Facturas</p>
+                    <p className="text-xl font-black text-emerald-900">{patientInvoices.length}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+        <div className="space-y-6">
+          {(() => {
+            const patient = customers.find((c) => c.id === activeClientId);
+            if (!patient) return <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80"><EmptyState title="Selecciona un paciente" subtitle="Elige un cliente para ver su historia clinica." /></div>;
+            const patientExams = examResults.filter((e) => e.customerId === patient.id);
+            const patientInvoices = invoices.filter((i) => i.customerId === patient.id);
+            return (
+              <>
+                <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
+                  <h3 className="text-lg font-black text-slate-950">Examenes visuales</h3>
+                  {patientExams.length === 0 ? (
+                    <div className="mt-4"><EmptyState title="Sin examenes" subtitle="Este paciente no tiene examenes registrados." /></div>
+                  ) : (
+                    <div className="mt-4 space-y-3">
+                      {patientExams.map((exam) => {
+                        const fmt = (v: number) => (v >= 0 ? "+" : "") + v.toFixed(2);
+                        return (
+                          <div key={exam.id} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-black text-cyan-700">{exam.id}</p>
+                                <p className="text-sm text-slate-500">{formatDate(exam.date)}</p>
+                              </div>
+                              <StatusBadge status={exam.status as any} />
+                            </div>
+                            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                              <div className="rounded-xl bg-cyan-50 p-3">
+                                <p className="text-xs font-bold text-cyan-700">OD</p>
+                                <p className="text-sm font-black">{fmt(exam.odSphere)} {fmt(exam.odCylinder)} x {exam.odAxis}°</p>
+                              </div>
+                              <div className="rounded-xl bg-emerald-50 p-3">
+                                <p className="text-xs font-bold text-emerald-700">OI</p>
+                                <p className="text-sm font-black">{fmt(exam.oiSphere)} {fmt(exam.oiCylinder)} x {exam.oiAxis}°</p>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-600">
+                              <span>ADD {exam.add.toFixed(2)}</span>
+                              <span>DIP {exam.dip} mm</span>
+                              {exam.needsLenses && <span>Lentes: {exam.lensType}</span>}
+                            </div>
+                            {exam.notes && <p className="mt-2 rounded-xl bg-white px-3 py-2 text-xs text-slate-600">{exam.notes}</p>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
+                  <h3 className="text-lg font-black text-slate-950">Facturas</h3>
+                  {patientInvoices.length === 0 ? (
+                    <div className="mt-4"><EmptyState title="Sin facturas" subtitle="Este paciente no tiene facturas registradas." /></div>
+                  ) : (
+                    <div className="mt-4 space-y-3">
+                      {patientInvoices.map((invoice) => {
+                        const totals = invoiceTotals(invoice.lines);
+                        return (
+                          <div key={invoice.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                            <div>
+                              <p className="text-sm font-black text-slate-950">{invoice.id}</p>
+                              <p className="text-xs text-slate-500">{formatDate(invoice.date)} · {invoice.payment}</p>
+                            </div>
+                            <div className="text-right">
+                              <StatusBadge status={invoice.status} />
+                              <p className="mt-1 text-sm font-black">{formatMoney(totals.total)}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      </section>
+    </div>
+  );
+
   const contentByView: Record<View, ReactNode> = {
     panel: panelView,
     inventario: inventoryView,
     compras: purchasesView,
     facturacion: billingView,
+    historias: clinicalHistoriesView,
     avances: techAdvancesView,
     servicios: servicesView,
     usuarios: usersView,
