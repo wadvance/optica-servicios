@@ -1419,6 +1419,13 @@ export default function App() {
               <p>ITBMS: tasa general 7% y lineas exentas configurables.</p>
               <p>Multiplataforma: responsive, instalable como PWA y datos locales.</p>
             </div>
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-200">Horario</p>
+              <div className="mt-2 grid gap-1 text-sm text-slate-200">
+                <p>Lunes a viernes &mdash; 8:00 am a 5:30 pm</p>
+                <p>Sabado &mdash; 8:00 am a 4:00 pm</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
