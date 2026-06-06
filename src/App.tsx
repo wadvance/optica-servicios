@@ -995,6 +995,7 @@ export default function App() {
   const [activeInvoiceId, setActiveInvoiceId] = useState(invoices[0]?.id ?? "");
   const [invoiceCustomerId, setInvoiceCustomerId] = useState(customers[0]?.id ?? "CLI-001");
   const [invoiceItemId, setInvoiceItemId] = useState(inventory[0]?.id ?? "INV-001");
+  const [invoiceCustomerName, setInvoiceCustomerName] = useState(customers[0]?.name ?? "");
   const [invoiceQty, setInvoiceQty] = useState("1");
   const [invoicePayment, setInvoicePayment] = useState("Efectivo");
   const [applyItbms, setApplyItbms] = useState(true);
@@ -1155,7 +1156,7 @@ export default function App() {
 
   const lowStockItems = useMemo(() => inventory.filter((item) => item.status !== "Servicio" && item.stock <= item.minStock), [inventory]);
   const activeClient = customers.find((customer) => customer.id === activeClientId) ?? customers[0];
-  const selectedCustomer = customers.find((customer) => customer.id === invoiceCustomerId) ?? customers[0];
+  const selectedCustomer = customers.find((customer) => customer.id === invoiceCustomerId) ?? null;
   const selectedInvoice = invoices.find((invoice) => invoice.id === activeInvoiceId) ?? invoices[0];
   const clientInvoices = useMemo(() => invoices.filter((invoice) => invoice.customerId === activeClient?.id), [activeClient?.id, invoices]);
   const clientAppointments = useMemo(() => appointments.filter((appointment) => appointment.customerId === activeClient?.id), [activeClient?.id, appointments]);
@@ -1571,18 +1572,41 @@ export default function App() {
   }
 
   function issueInvoice() {
-    if (!selectedCustomer || draftLines.length === 0) {
+    if (!invoiceCustomerName.trim() || draftLines.length === 0) {
       return;
+    }
+
+    const existing = customers.find((c) => c.name === invoiceCustomerName.trim());
+    let billTo = existing;
+
+    if (!existing) {
+      const newCustomer: Customer = {
+        id: `CLI-${String(customers.length + 1).padStart(3, "0")}`,
+        name: invoiceCustomerName.trim(),
+        document: "Consumidor final",
+        dv: "00",
+        email: "cliente@example.com",
+        phone: "+507",
+        prescription: "Formula pendiente de registrar",
+        lastVisit: todayDate(),
+        balance: 0,
+      };
+      setCustomers((items) => [newCustomer, ...items]);
+      setUsers((items) => [
+        ...items,
+        { id: `USR-${String(items.length + 1).padStart(3, "0")}`, name: newCustomer.name, role: "Cliente", email: newCustomer.email, status: "Activo" },
+      ]);
+      billTo = newCustomer;
     }
 
     const nextNumber = invoices.length + 1;
     const id = `FE-${String(nextNumber).padStart(5, "0")}`;
     const newInvoice: Invoice = {
       id,
-      customerId: selectedCustomer.id,
-      customer: selectedCustomer.name,
-      document: selectedCustomer.document || "Consumidor final",
-      dv: selectedCustomer.dv || "00",
+      customerId: billTo.id,
+      customer: billTo.name,
+      document: billTo.document || "Consumidor final",
+      dv: billTo.dv || "00",
       date: todayDate(),
       status: invoicePayment === "Credito" ? "Emitida" : "Pagada",
       payment: invoicePayment,
@@ -1604,10 +1628,12 @@ export default function App() {
       }),
     );
     setCustomers((items) =>
-      items.map((customer) => (customer.id === selectedCustomer.id ? { ...customer, balance: invoicePayment === "Credito" ? customer.balance + draftTotals.total : customer.balance } : customer)),
+      items.map((customer) => (customer.id === billTo.id ? { ...customer, balance: invoicePayment === "Credito" ? customer.balance + draftTotals.total : customer.balance } : customer)),
     );
     setDraftLines([]);
     setActiveInvoiceId(id);
+    setInvoiceCustomerId("");
+    setInvoiceCustomerName("");
   }
 
   function markInvoicePaid(id: string) {
@@ -2120,9 +2146,10 @@ export default function App() {
             <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr_120px_auto] lg:items-end">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Cliente
-                <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceCustomerId} onChange={(event) => setInvoiceCustomerId(event.target.value)}>
-                  {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
-                </select>
+                <input list="customer-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceCustomerName} onChange={(event) => { setInvoiceCustomerName(event.target.value); const found = customers.find((c) => c.name === event.target.value); setInvoiceCustomerId(found ? found.id : ""); }} placeholder="Escribe o selecciona un cliente" autoComplete="off" />
+                <datalist id="customer-list">
+                  {customers.map((customer) => <option key={customer.id} value={customer.name} />)}
+                </datalist>
               </label>
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Producto o servicio
