@@ -1825,9 +1825,6 @@ export default function App() {
         <button className="cursor-pointer rounded-2xl bg-cyan-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-cyan-600/20 transition hover:-translate-y-0.5" onClick={() => setActiveView("resultados")}>
           Examen visual
         </button>
-        <button className="cursor-pointer rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:-translate-y-0.5" onClick={() => setActiveView("facturacion")}>
-          Nueva factura
-        </button>
         <button className="cursor-pointer rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-950/15 transition hover:-translate-y-0.5" onClick={() => setActiveView("inventario")}>
           Inventario
         </button>
