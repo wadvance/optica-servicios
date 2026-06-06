@@ -1575,15 +1575,43 @@ export default function App() {
     setDraftLines((lines) => lines.filter((_, lineIndex) => lineIndex !== index));
   }
 
+  function saveInvoiceCustomer() {
+    const name = invoiceCustomerName.trim();
+    if (!name || customers.some((c) => c.name === name)) {
+      return;
+    }
+    const newCustomer: Customer = {
+      id: `CLI-${String(customers.length + 1).padStart(3, "0")}`,
+      name,
+      document: invoiceCustomerDoc.trim() || "Consumidor final",
+      dv: "00",
+      email: "cliente@example.com",
+      phone: invoiceCustomerPhone.trim() || "+507",
+      address: invoiceCustomerAddress.trim() || "",
+      prescription: "Formula pendiente de registrar",
+      lastVisit: todayDate(),
+      balance: 0,
+    };
+    setCustomers((items) => [newCustomer, ...items]);
+    setUsers((items) => [
+      ...items,
+      { id: `USR-${String(items.length + 1).padStart(3, "0")}`, name: newCustomer.name, role: "Cliente", email: newCustomer.email, status: "Activo" },
+    ]);
+    setInvoiceCustomerId(newCustomer.id);
+    setInvoiceCustomerDoc("");
+    setInvoiceCustomerPhone("");
+    setInvoiceCustomerAddress("");
+  }
+
   function issueInvoice() {
     if (!invoiceCustomerName.trim() || draftLines.length === 0) {
       return;
     }
 
-    const existing = customers.find((c) => c.name === invoiceCustomerName.trim());
+    const existing = invoiceCustomerId ? customers.find((c) => c.id === invoiceCustomerId) : customers.find((c) => c.name === invoiceCustomerName.trim());
     let billTo = existing;
 
-    if (!existing) {
+    if (!billTo) {
       const newCustomer: Customer = {
         id: `CLI-${String(customers.length + 1).padStart(3, "0")}`,
         name: invoiceCustomerName.trim(),
@@ -2171,6 +2199,7 @@ export default function App() {
                       <input className="rounded-xl border border-cyan-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceCustomerPhone} onChange={(event) => setInvoiceCustomerPhone(event.target.value)} placeholder="Telefono" />
                       <input className="rounded-xl border border-cyan-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceCustomerAddress} onChange={(event) => setInvoiceCustomerAddress(event.target.value)} placeholder="Direccion" />
                     </div>
+                    <button className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-bold text-white" onClick={saveInvoiceCustomer}>Guardar cliente</button>
                   </div>
                 )}
               </label>
