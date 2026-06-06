@@ -1222,6 +1222,7 @@ export default function App() {
     }
 
     const nextUser = { email: normalizedEmail, password, createdAt: todayDate() };
+    console.log("registerAuthUser: setting state", nextUser.email);
     setRegisteredUser(nextUser);
     setSessionUser(nextUser.email);
     setRole("Administrador");
@@ -2785,7 +2786,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#f4f1eb] text-slate-950">
+    <div className="min-h-screen bg-[#f4f1eb] text-slate-950">
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="bg-orb absolute -left-24 top-20 h-72 w-72 rounded-full bg-cyan-300/35 blur-3xl" />
         <div className="bg-orb-delayed absolute right-0 top-1/3 h-80 w-80 rounded-full bg-emerald-300/30 blur-3xl" />
