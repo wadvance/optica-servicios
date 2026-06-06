@@ -143,7 +143,7 @@ const business = {
   owner: "Jorge Tello",
   ruc: "RUC demo pendiente",
   dv: "00",
-  address: "Calle C Nte. 454-11, David",
+  address: "Calle C Nte, diagonal a la Policlinica Gustavo A. Ross, frente al Banco General, costado del edificio 7 pisos, David",
   phone: "+507 6000-0000",
   celular: "66827364",
   fijo: "730 1045",
