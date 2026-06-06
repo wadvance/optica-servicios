@@ -1203,6 +1203,123 @@ export default function App() {
   const netIncome = salesTotal - totalExpenses;
   const currentNav = role === "Administrador" ? adminNav : clientNav;
 
+  const generateExamPDF = useCallback((exam: ExamResult) => {
+    const customer = customers.find(c => c.id === exam.customerId);
+    const pdf = new jsPDF({ unit: "mm", format: "a4" });
+    const pageW = 210;
+    const margin = 20;
+    const y0 = 25;
+    const col1 = margin;
+    const col2 = 105;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18);
+    pdf.text(business.name, pageW / 2, y0, { align: "center" });
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.text(business.address, pageW / 2, y0 + 6, { align: "center" });
+    pdf.text(`Cel: ${business.celular} / Fijo: ${business.fijo}`, pageW / 2, y0 + 12, { align: "center" });
+
+    let y = y0 + 22;
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(0.5);
+    pdf.line(margin, y, pageW - margin, y);
+    y += 8;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+    pdf.text("Resultado de Examen Visual", margin, y);
+    y += 10;
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.text(`Examen: ${exam.id}`, margin, y);
+    pdf.text(`Fecha: ${new Date(exam.date).toLocaleDateString("es-PA", { year: "numeric", month: "long", day: "numeric" })}`, col2, y);
+    y += 7;
+
+    if (customer) {
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Paciente:", margin, y);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(customer.name, margin + 22, y);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Documento:", col2, y);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`${customer.document} DV ${customer.dv}`, col2 + 22, y);
+      y += 7;
+      pdf.text(`Email: ${customer.email}`, margin, y);
+      pdf.text(`Telefono: ${customer.phone}`, col2, y);
+    }
+    y += 12;
+
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, y, pageW - margin, y);
+    y += 6;
+
+    const rxW = (pageW - 2 * margin) / 2;
+    const tableX = [margin, margin + rxW / 2, margin + rxW];
+    const colW = [rxW * 0.35, rxW * 0.25, rxW * 0.25];
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    pdf.text("Formula Optica", margin, y);
+    y += 5;
+
+    const drawRow = (label: string, od: string, oi: string, bold = false) => {
+      pdf.setFont("helvetica", bold ? "bold" : "normal");
+      pdf.text(label, tableX[0], y);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("OD", margin + rxW * 0.55, y);
+      pdf.text("OI", pageW - rxW * 0.25, y);
+      pdf.setFont("helvetica", "normal");
+      y += 2;
+      pdf.setDrawColor(230, 230, 230);
+      pdf.line(margin + rxW, y, pageW - margin, y);
+      y += 1;
+      pdf.text(od, margin + rxW * 0.55, y);
+      pdf.text(oi, pageW - rxW * 0.25, y);
+      y += 6;
+    };
+
+    y += 2;
+    const frx = (v: number) => (v >= 0 ? "+" : "") + v.toFixed(2);
+    drawRow("Esfera (SPH)", frx(exam.odSphere), frx(exam.oiSphere));
+    drawRow("Cilindro (CYL)", frx(exam.odCylinder), frx(exam.oiCylinder));
+    drawRow(`Eje (AXIS)`, `${exam.odAxis}°`, `${exam.oiAxis}°`);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Adicion (ADD): ${exam.add.toFixed(2)}`, margin, y);
+    pdf.text(`DIP: ${exam.dip} mm`, col2, y);
+    y += 8;
+
+    pdf.text(`Requiere lentes: ${exam.needsLenses ? "Si" : "No"}`, margin, y);
+    if (exam.needsLenses) pdf.text(`Tipo recomendado: ${exam.lensType}`, col2, y);
+    y += 8;
+
+    if (exam.notes) {
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Observaciones:", margin, y);
+      y += 5;
+      pdf.setFont("helvetica", "normal");
+      const lines = pdf.splitTextToSize(exam.notes, pageW - 2 * margin);
+      pdf.text(lines, margin, y);
+      y += lines.length * 4 + 4;
+    }
+
+    y = Math.max(y, 250);
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, y, pageW - margin, y);
+    y += 5;
+    pdf.setFontSize(7);
+    pdf.setFont("helvetica", "italic");
+    pdf.text(`${business.name} · ${business.address} · Cel ${business.celular} / Fijo ${business.fijo}`, pageW / 2, y, { align: "center" });
+    pdf.text(business.hours, pageW / 2, y + 4, { align: "center" });
+
+    pdf.save(`examen-visual-${exam.id}.pdf`);
+  }, [customers]);
+
   async function registerAuthUser(email: string, password: string) {
     const error = validateAuthCredentials(email, password);
 
@@ -2499,123 +2616,6 @@ export default function App() {
   ) : (
     <EmptyState title="Sin cliente" subtitle="Selecciona un cliente para agendar." />
   );
-
-  const generateExamPDF = useCallback((exam: ExamResult) => {
-    const customer = customers.find(c => c.id === exam.customerId);
-    const pdf = new jsPDF({ unit: "mm", format: "a4" });
-    const pageW = 210;
-    const margin = 20;
-    const y0 = 25;
-    const col1 = margin;
-    const col2 = 105;
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(18);
-    pdf.text(business.name, pageW / 2, y0, { align: "center" });
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
-    pdf.text(business.address, pageW / 2, y0 + 6, { align: "center" });
-    pdf.text(`Cel: ${business.celular} / Fijo: ${business.fijo}`, pageW / 2, y0 + 12, { align: "center" });
-
-    let y = y0 + 22;
-    pdf.setDrawColor(0, 0, 0);
-    pdf.setLineWidth(0.5);
-    pdf.line(margin, y, pageW - margin, y);
-    y += 8;
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(14);
-    pdf.text("Resultado de Examen Visual", margin, y);
-    y += 10;
-
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-    pdf.text(`Examen: ${exam.id}`, margin, y);
-    pdf.text(`Fecha: ${new Date(exam.date).toLocaleDateString("es-PA", { year: "numeric", month: "long", day: "numeric" })}`, col2, y);
-    y += 7;
-
-    if (customer) {
-      pdf.setFont("helvetica", "bold");
-      pdf.text("Paciente:", margin, y);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(customer.name, margin + 22, y);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("Documento:", col2, y);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`${customer.document} DV ${customer.dv}`, col2 + 22, y);
-      y += 7;
-      pdf.text(`Email: ${customer.email}`, margin, y);
-      pdf.text(`Telefono: ${customer.phone}`, col2, y);
-    }
-    y += 12;
-
-    pdf.setDrawColor(200, 200, 200);
-    pdf.setLineWidth(0.3);
-    pdf.line(margin, y, pageW - margin, y);
-    y += 6;
-
-    const rxW = (pageW - 2 * margin) / 2;
-    const tableX = [margin, margin + rxW / 2, margin + rxW];
-    const colW = [rxW * 0.35, rxW * 0.25, rxW * 0.25];
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(9);
-    pdf.text("Formula Optica", margin, y);
-    y += 5;
-
-    const drawRow = (label: string, od: string, oi: string, bold = false) => {
-      pdf.setFont("helvetica", bold ? "bold" : "normal");
-      pdf.text(label, tableX[0], y);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("OD", margin + rxW * 0.55, y);
-      pdf.text("OI", pageW - rxW * 0.25, y);
-      pdf.setFont("helvetica", "normal");
-      y += 2;
-      pdf.setDrawColor(230, 230, 230);
-      pdf.line(margin + rxW, y, pageW - margin, y);
-      y += 1;
-      pdf.text(od, margin + rxW * 0.55, y);
-      pdf.text(oi, pageW - rxW * 0.25, y);
-      y += 6;
-    };
-
-    y += 2;
-    const frx = (v: number) => (v >= 0 ? "+" : "") + v.toFixed(2);
-    drawRow("Esfera (SPH)", frx(exam.odSphere), frx(exam.oiSphere));
-    drawRow("Cilindro (CYL)", frx(exam.odCylinder), frx(exam.oiCylinder));
-    drawRow(`Eje (AXIS)`, `${exam.odAxis}°`, `${exam.oiAxis}°`);
-
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`Adicion (ADD): ${exam.add.toFixed(2)}`, margin, y);
-    pdf.text(`DIP: ${exam.dip} mm`, col2, y);
-    y += 8;
-
-    pdf.text(`Requiere lentes: ${exam.needsLenses ? "Si" : "No"}`, margin, y);
-    if (exam.needsLenses) pdf.text(`Tipo recomendado: ${exam.lensType}`, col2, y);
-    y += 8;
-
-    if (exam.notes) {
-      pdf.setFont("helvetica", "bold");
-      pdf.text("Observaciones:", margin, y);
-      y += 5;
-      pdf.setFont("helvetica", "normal");
-      const lines = pdf.splitTextToSize(exam.notes, pageW - 2 * margin);
-      pdf.text(lines, margin, y);
-      y += lines.length * 4 + 4;
-    }
-
-    y = Math.max(y, 250);
-    pdf.setDrawColor(0, 0, 0);
-    pdf.setLineWidth(0.3);
-    pdf.line(margin, y, pageW - margin, y);
-    y += 5;
-    pdf.setFontSize(7);
-    pdf.setFont("helvetica", "italic");
-    pdf.text(`${business.name} · ${business.address} · Cel ${business.celular} / Fijo ${business.fijo}`, pageW / 2, y, { align: "center" });
-    pdf.text(business.hours, pageW / 2, y + 4, { align: "center" });
-
-    pdf.save(`examen-visual-${exam.id}.pdf`);
-  }, [customers]);
 
   const resultsView = (
     <div className="space-y-8">
