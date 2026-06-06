@@ -3,10 +3,14 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Faltan variables VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY en .env");
-}
+const dummy = {
+  from: () => ({ select: async () => ({ data: [], error: null }), upsert: async () => ({ error: null }) }),
+  channel: () => ({ on: () => ({ subscribe: () => {} }) }),
+};
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: true, autoRefreshToken: true },
-});
+export const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey, {
+        auth: { persistSession: true, autoRefreshToken: true },
+      })
+    : (dummy as ReturnType<typeof createClient>);
