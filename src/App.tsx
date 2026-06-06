@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
+import { jsPDF } from "jspdf";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
 import { cn } from "./utils/cn";
 import { supabase } from "./lib/supabase";
 import { sendRegistrationEmail } from "./lib/email";
@@ -6,8 +7,8 @@ import { loadAllSeedData, saveInventory, savePurchases, saveServicePayments, sav
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 type Role = "Administrador" | "Cliente";
-type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "avances" | "servicios" | "usuarios" | "cumplimiento";
-type ClientView = "portal" | "mis-facturas" | "recetas" | "citas";
+type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "avances" | "servicios" | "usuarios" | "cumplimiento" | "ia" | "resultados";
+type ClientView = "portal" | "mis-facturas" | "recetas" | "citas" | "resultados";
 type View = AdminView | ClientView;
 
 export type InventoryItem = {
@@ -112,6 +113,25 @@ export type UserAccount = {
   status: "Activo" | "Pendiente";
 };
 
+export type ExamResult = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  date: string;
+  odSphere: number;
+  odCylinder: number;
+  odAxis: number;
+  oiSphere: number;
+  oiCylinder: number;
+  oiAxis: number;
+  add: number;
+  dip: number;
+  needsLenses: boolean;
+  lensType: string;
+  notes: string;
+  status: "Pendiente" | "Completado";
+};
+
 type AuthUser = {
   email: string;
   password: string;
@@ -143,9 +163,12 @@ const business = {
   owner: "Jorge Tello",
   ruc: "RUC demo pendiente",
   dv: "00",
-  address: "Ciudad de Panamá, Panamá",
+  address: "Calle C Nte, diagonal a la Policlinica Gustavo A. Ross, frente al Banco General, costado del edificio 7 pisos, David",
   phone: "+507 6000-0000",
-  whatsapp: "5076000000",
+  celular: "66827364",
+  fijo: "730 1045",
+  whatsapp: "50766827364",
+  hours: "Lunes a viernes 8:00 am a 5:30 pm, Sábado 8:00 am a 4:00 pm",
 };
 
 const adminNav: { id: AdminView; label: string; description: string }[] = [
@@ -157,6 +180,8 @@ const adminNav: { id: AdminView; label: string; description: string }[] = [
   { id: "servicios", label: "Pagos", description: "Servicios y vencimientos" },
   { id: "usuarios", label: "Usuarios", description: "Administrador y clientes" },
   { id: "cumplimiento", label: "Panama", description: "DGI, SFEP e ITBMS" },
+  { id: "ia", label: "Conocimiento", description: "Guia optica y tecnologia" },
+  { id: "resultados", label: "Resultados", description: "Examenes de vision" },
 ];
 
 const clientNav: { id: ClientView; label: string; description: string }[] = [
@@ -164,6 +189,7 @@ const clientNav: { id: ClientView; label: string; description: string }[] = [
   { id: "mis-facturas", label: "Facturas", description: "Estado de pagos" },
   { id: "recetas", label: "Recetas", description: "Formula optica" },
   { id: "citas", label: "Citas", description: "Solicitudes" },
+  { id: "resultados", label: "Resultados", description: "Mis examenes de vision" },
 ];
 
 const categories = ["Todas", "Monturas", "Lentes oftalmicos", "Lentes de contacto", "Accesorios", "Servicios clinicos"];
@@ -590,13 +616,17 @@ function AuthScreen({
   onLogin: (username: string, password: string) => string;
 }) {
   const [mode, setMode] = useState<AuthMode>(registeredUser ? "ingreso" : "registro");
-  const [form, setForm] = useState({ email: registeredUser?.email ?? "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [message, setMessage] = useState("");
   const rules = passwordRules(form.password);
 
   useEffect(() => {
     setMode(registeredUser ? "ingreso" : "registro");
-    setForm((current) => ({ ...current, email: registeredUser?.email ?? current.email }));
+    if (registeredUser) {
+      setForm({ email: registeredUser.email, password: "" });
+    } else {
+      setForm({ email: "", password: "" });
+    }
   }, [registeredUser]);
 
   function submitAuth(event: FormEvent<HTMLFormElement>) {
@@ -633,10 +663,10 @@ function AuthScreen({
 
         <section className="reveal-up rounded-[2rem] bg-white/85 p-6 shadow-2xl shadow-slate-300/50 ring-1 ring-slate-200 backdrop-blur sm:p-8">
           <div className="grid grid-cols-2 gap-2 rounded-full bg-slate-100 p-1">
-            <button className={cn("rounded-full px-4 py-3 text-sm font-black transition", mode === "registro" ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => setMode("registro")}>
+            <button className={cn("rounded-full px-4 py-3 text-sm font-black transition", mode === "registro" ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => { setMode("registro"); setForm({ email: "", password: "" }); }}>
               Registro
             </button>
-            <button className={cn("rounded-full px-4 py-3 text-sm font-black transition", mode === "ingreso" ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => setMode("ingreso")} disabled={!registeredUser}>
+            <button className={cn("rounded-full px-4 py-3 text-sm font-black transition", mode === "ingreso" ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => { setMode("ingreso"); setForm({ email: registeredUser?.email ?? "", password: "" }); }} disabled={!registeredUser}>
               Ingreso
             </button>
           </div>
@@ -663,7 +693,7 @@ function AuthScreen({
                     type="password"
                     value={form.password}
                     onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                    placeholder="Optica1!"
+                    placeholder="Escribe tu contrasena"
                 autoComplete={mode === "registro" ? "new-password" : "current-password"}
               />
             </label>
@@ -683,10 +713,6 @@ function AuthScreen({
               {mode === "registro" ? "Crear usuario e ingresar" : "Ingresar"}
             </button>
           </form>
-
-          <p className="mt-5 text-xs leading-5 text-slate-500">
-            Prototipo local: para produccion se debe usar autenticacion con backend, cifrado y permisos por rol.
-          </p>
         </section>
       </main>
     </div>
@@ -783,6 +809,186 @@ export default function App() {
   const [appointments, setAppointments] = usePersistentState<Appointment[]>("sop-appointments", appointmentsSeed);
   const [users, setUsers] = usePersistentState<UserAccount[]>("sop-users", usersSeed);
   const [techAdvances] = useState<TechAdvance[]>(techAdvancesSeed);
+  const [examResults, setExamResults] = usePersistentState<ExamResult[]>("sop-exams", []);
+  const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null);
+
+  const [examForm, setExamForm] = useState({
+    customerId: customers[0]?.id ?? "",
+    odSphere: "-2.00",
+    odCylinder: "-0.75",
+    odAxis: "180",
+    oiSphere: "-2.25",
+    oiCylinder: "-0.50",
+    oiAxis: "175",
+    add: "0.00",
+    dip: "64",
+    needsLenses: true,
+    lensType: "Progresivos",
+    notes: "",
+  });
+
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState("");
+  const [aiError, setAiError] = useState("");
+
+  const knowledgeBase = useMemo(() => [
+    {
+      keywords: ["progresivo", "progresivos", "multifocal", "vision cercana", "vision lejana"],
+      title: "Lentes Progresivos",
+      content: "Los lentes progresivos (multifocales) corrigen vista cercana, intermedia y lejana sin lineas visibles. Ideales para presbicia. Tecnologias: Free-Form (digital) ofrece mejor campo visual. Marcas: Varilux, Zeiss Progressive, Hoyalux, Shamir Autograph. El periodo de adaptacion es de 1 a 2 semanas."
+    },
+    {
+      keywords: ["bifocal", "bifocales", "linea visible"],
+      title: "Lentes Bifocales",
+      content: "Los bifocales tienen dos campos separados por una linea visible: parte superior para lejos, inferior para cerca. Son mas economicos que los progresivos pero menos esteticos. Recomendados para pacientes que no se adaptan a progresivos."
+    },
+    {
+      keywords: ["monofocal", "monofocales", "simple vista", "un solo campo"],
+      title: "Lentes Monofocales",
+      content: "Los lentes monofocales tienen un solo poder en toda la superficie. Se usan para miopia (dificultad para ver lejos), hipermetropia (dificultad para ver cerca) o astigmatismo. Son los lentes mas basicos y economicos."
+    },
+    {
+      keywords: ["fotocromatico", "fotocromaticos", "fotosensible", "transitions", "luz solar", "oscuras"],
+      title: "Lentes Fotocromaticos (Transitions)",
+      content: "Los lentes fotocromaticos se oscurecen automaticamente con la luz UV y se aclaran en interiores. Tecnologia Transitions Signature Gen 8: mas rapidos y oscuros que generaciones anteriores. Tambien hay lentes fotocromaticos de policarbonato y alto indice. Ideales para quienes pasan tiempo dentro y fuera."
+    },
+    {
+      keywords: ["polarizado", "polarizados", "reflejo", "encandilamiento", "manejo", "conducir"],
+      title: "Lentes Polarizados",
+      content: "Los lentes polarizados eliminan el resplandor y reflejos horizontales (agua, nieve, pavimento). Ideales para conducir, pesca, deportes acuaticos y nieve. No recomendados para ver pantallas LCD (pueden verse distorsionadas). Combaten la fatiga visual por brillo excesivo."
+    },
+    {
+      keywords: ["luz azul", "filtro azul", "pantalla", "computadora", "fatiga visual", "blue cut"],
+      title: "Filtro de Luz Azul (Blue Cut)",
+      content: "Los lentes con filtro de luz azul bloquean la luz HEV (alta energia visible) emitida por pantallas digitales. Reducen fatiga visual, dolores de cabeza y mejoran el sueno. Recomendados para personas que pasan mas de 4 horas frente a pantallas. Tienen un leve tono amarillo/ambar."
+    },
+    {
+      keywords: ["antireflejo", "anti reflejo", "antirreflejante", "ar", "reflejos"],
+      title: "Tratamiento Antireflejo (AR)",
+      content: "El tratamiento antireflejo elimina los reflejos en la superficie del lente, mejorando la vision nocturna y la estetica. Reduce la fatiga visual. Capas adicionales: hidrofobica (repele agua), oleofobica (repele grasa), anti-rayas, anti-estatica. Es el tratamiento mas recomendado."
+    },
+    {
+      keywords: ["policarbonato", "policarbonato", "impacto", "seguridad", "deportes", "ninos", "niños"],
+      title: "Lentes de Policarbonato",
+      content: "El policarbonato es un material ligero y resistente a impactos (10x mas que plastico regular). Ideal para ninos, deportes, seguridad laboral. Bloquea 100% UV. Indice de refraccion 1.59. Desventaja: menor claridad optica que el alto indice."
+    },
+    {
+      keywords: ["alto indice", "alto índice", "1.67", "1.74", "1.76", "delgado", "liviano"],
+      title: "Lentes de Alto Indice",
+      content: "Los lentes de alto indice (1.67, 1.74, 1.76) son mas delgados y livianos que los convencionales. Ideales para graduaciones altas (mas de -4.00 o +4.00). Indice 1.74: hasta 50% mas delgado que plastico regular. Indice 1.76: el mas delgado disponible."
+    },
+    {
+      keywords: ["trivex", "trivex"],
+      title: "Lentes Trivex",
+      content: "El Trivex es un material similar al policarbonato pero con mejor claridad optica. Resistente a impactos, bloquea 100% UV, mas liviano que el policarbonato. Ideal para graduaciones moderadas y deportes."
+    },
+    {
+      keywords: ["acetato", "acetato", "montura", "carey", "ecologico"],
+      title: "Monturas de Acetato",
+      content: "Las monturas de acetato son las mas populares. Material derivado de celulosa (ecologico). Hipoalergenico, disponible en miles de colores y patrones. Marcas: Ray-Ban, Oakley, Persol. El acetato de calidad (italiano, japones) dura anos."
+    },
+    {
+      keywords: ["titanio", "titanio", "metal", "montura metalica", "hipoalergenico"],
+      title: "Monturas de Titanio",
+      content: "Las monturas de titanio son ultra-livianas, resistentes a la corrosion e hipoalergenicas. Ideales para pieles sensibles. Flexon (aleacion con memoria) recupera su forma al doblarse. Beta-titanio: mas flexible que el titanio puro."
+    },
+    {
+      keywords: ["lentes contacto", "contacto", "contactologia", "blandos", "rigidos", "desechables"],
+      title: "Lentes de Contacto",
+      content: "Tipos: blandos (hidrogel, silicon hidrogel), rigidos permeables a gas (RPG), especiales (esclerales, toricos, multifocales). Los de silicon hidrogel permiten 5x mas oxigeno que los convencionales. Desechables diarios: mayor higiene y comodidad. RPG: mejor agudeza visual para astigmatismo irregular."
+    },
+    {
+      keywords: ["lentes niños", "lentes ninos", "infantil", "ninos miopia", "control miopia"],
+      title: "Control de Miopia en Ninos",
+      content: "Tecnologias para controlar la progresion de miopia infantil: lentes Stellest (Essilor), MiyoSmart (Hoya), lentes de contacto blandos MiSight, atropina en baja dosis. Ortokeratologia (lentes RPG nocturnos). La deteccion temprana es clave para evitar miopia alta en adultos."
+    },
+    {
+      keywords: ["lentes deporte", "deportivos", "gafas deporte", "running", "ciclismo"],
+      title: "Lentes Deportivos",
+      content: "Caracteristicas: monturas envolventes, material resistente a impactos (policarbonato/Trivex), agarre antideslizante, ventilacion para evitar empanamiento. Lentes intercambiables para diferentes condiciones de luz. Marcas: Oakley, Rudy Project, Julbo, Adidas Sport."
+    },
+    {
+      keywords: ["lentes soldar", "soldadura", "seguridad laboral", "proteccion uv"],
+      title: "Lentes de Seguridad Laboral",
+      content: "Normas ANSI Z87.1 (EEUU) y CE EN 166 (Europa). Tipos: anti-impacto, anti-quimicos, para soldar (filtro IR/UV). Lentes con proteccion lateral, armazon resistente. Lentes de seguridad graduados disponibles."
+    },
+    {
+      keywords: ["lentes sol", "sol", "gafas sol", "ray ban", "polarizado uv"],
+      title: "Gafas de Sol",
+      content: "Categoria de proteccion UV: 0 (cosmetico) a 4 (glaciar). Buscar sello UV400 (bloquea 99-100% UVA/UVB). Polarizados: eliminan reflejos. Espectro electromagnetico: UV (100-400nm), luz visible (400-700nm), IR (700nm+). La proteccion UV no depende del color del lente."
+    },
+    {
+      keywords: ["varilux", "zeiss", "hoya", "essilor", "shamir", "nikon", "rodentstock"],
+      title: "Marcas de Lentes",
+      content: "Essilor (Varilux, Crizal, Transitions) - lider mundial. Zeiss (precision alemana, BlueGuard). Hoya (MiyoSmart, Nulux). Shamir (Autograph, Glacier). Nikon (SeeCoat). Rodenstock (DNEye). Cada marca tiene tecnologias exclusivas de tratamiento y diseno digital."
+    },
+    {
+      keywords: ["crizal", "tratamiento", "sapphire", "rock", "essilor"],
+      title: "Tratamientos Crizal (Essilor)",
+      content: "Crizal Rock: resistencia a rayaduras (5x mas duro). Crizal Sapphire: el mas resistente (36% menos reflejos). Crizal Prevencia: filtra luz azul. Crizal Easy: relacion calidad-precio. Todos incluyen antireflejo, hidrofobico, oleofobico, anti-estatico y proteccion UV."
+    },
+    {
+      keywords: ["graduacion", "receta", "prescripcion", "esfera", "cilindro", "eje", "adicion"],
+      title: "Como leer una Receta Optica",
+      content: "Esfera (SPH): graduacion de miopia (-) o hipermetropia (+). Cilindro (CYL): cantidad de astigmatismo. Eje (AXIS): orientacion del astigmatismo (0-180°). Adicion (ADD): poder extra para cerca (progresivos/bifocales). Distancia interpupilar (DIP/PD): separacion entre pupilas."
+    },
+    {
+      keywords: ["antiniebla", "anti niebla", "anti fog", "antivaho", "empanamiento"],
+      title: "Tratamiento Antiniebla (Anti-Fog)",
+      content: "Los lentes con tratamiento anti-fog evitan el empanamiento por cambios de temperatura. Ideal para mascarillas, deportes, clima frio. Marcas: OptiPlus Anti-Fog, Zeiss Anti-Fog. Tambien existen sprays y toallitas anti-fog para aplicar sobre lentes existentes."
+    },
+    {
+      keywords: ["lentes inteligentes", "smart glasses", "realidad aumentada", "tecnologia"],
+      title: "Gafas Inteligentes y Realidad Aumentada",
+      content: "Ultimas innovaciones: Ray-Ban Meta (camara, audio, IA), Xreal Air (AR portatil), Apple Vision Pro (computacion espacial). Lentes con pantalla integrada para navegacion, traduccion y notificaciones. La tecnologia de guia de onda (waveguide) permite superponer informacion digital sin obstruir la vision."
+    },
+    {
+      keywords: ["impresion 3d", "3d", "montura impresa", "personalizada"],
+      title: "Monturas Impresas en 3D",
+      content: "La impresion 3D permite monturas personalizadas segun la topografia facial del usuario. Materiales: nylon (poliamida), resina. Ventajas: ajuste perfecto, disenos imposibles con metodos tradicionales, produccion bajo demanda. Marcas: Monoqool, YouMawo, Hoet."
+    },
+    {
+      keywords: ["lentes organicos", "sustentable", "ecologico", "eco friendly", "bambu"],
+      title: "Lentes y Monturas Ecologicas",
+      content: "Monturas biodegradables: acetato natural (Mazzucchelli), bambu, madera reciclada, plastico oceánico reciclado. Lentes organicos: materiales bio-based. Marcas sustentables: Eco Eyewear, Proof, Sea2See. Packaging reciclable y procesos de produccion carbono neutral."
+    },
+    {
+      keywords: ["lentes niños", "montura infantil", "flexible", "seguridad infantil"],
+      title: "Monturas Infantiles",
+      content: "Caracteristicas: material flexible (memoria), varillas ajustables, sin piezas metalicas pequeñas, puente nasal adaptado a rostros infantiles. Marcas: Ray-Ban Junior, Nike Kids, Flexi Kids. Recomendacion: lentes de policarbonato por resistencia a impactos y liviandad."
+    },
+    {
+      keywords: ["intolerancia", "alergia", "alergico", "niquel", "piel sensible"],
+      title: "Lentes para Piel Sensible (Hipoalergenicos)",
+      content: "Monturas hipoalergenicas: titanio (puro o beta), acetato, acero inoxidable quirurgico, plastica flexon (memoria). Evitar niquel, cobalto y cromo. Tratamiento antialergico disponible en algunas monturas."
+    },
+  ], []);
+
+  const handleAISearch = useCallback((query: string) => {
+    setAiLoading(true);
+    setAiError("");
+    setAiResult("");
+    const q = query.toLowerCase().trim();
+    const words = q.split(/\s+/);
+    const scored = knowledgeBase.map(entry => {
+      let score = 0;
+      for (const word of words) {
+        for (const kw of entry.keywords) {
+          if (kw.includes(word) || word.includes(kw)) score += 3;
+          if (entry.content.toLowerCase().includes(word)) score += 1;
+        }
+      }
+      return { ...entry, score };
+    });
+    const best = scored.filter(e => e.score > 0).sort((a, b) => b.score - a.score);
+    if (best.length > 0) {
+      setAiResult(best.slice(0, 3).map(e => `**${e.title}**\n${e.content}`).join("\n\n---\n\n"));
+    } else {
+      setAiResult("No encontre informacion sobre esa consulta en mi base de conocimiento. Temas disponibles: tipos de lentes (progresivos, bifocales, monofocales), materiales (policarbonato, alto indice, Trivex), tratamientos (antireflejo, fotocromatico, polarizado, luz azul), monturas (acetato, titanio), marcas, lentes de contacto, control de miopia, gafas de sol, tecnologia optica y mas.");
+    }
+    setAiLoading(false);
+  }, [knowledgeBase]);
 
   const [inventoryQuery, setInventoryQuery] = useState("");
   const [inventoryCategory, setInventoryCategory] = useState("Todas");
@@ -820,8 +1026,11 @@ export default function App() {
 
   useEffect(() => {
     if ("serviceWorker" in navigator && window.location.protocol === "https:") {
-      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+      navigator.serviceWorker.register("/sw.js?v=2").catch(() => undefined);
     }
+    const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e as any); };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
   // Sync: load data from Supabase on mount (replaces localStorage if available)
@@ -1413,11 +1622,12 @@ export default function App() {
             </p>
           </div>
           <div className="rounded-[2rem] border border-white/10 bg-white/10 p-5 backdrop-blur">
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-100">Estado Panama</p>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-100">Contacto y horario</p>
             <div className="mt-4 grid gap-3 text-sm text-slate-200">
-              <p>SFEP/DGI: campos RUC, DV, CUFE y CAFE modelados.</p>
-              <p>ITBMS: tasa general 7% y lineas exentas configurables.</p>
-              <p>Multiplataforma: responsive, instalable como PWA y datos locales.</p>
+              <p><span className="font-semibold text-white">Celular:</span> {business.celular}</p>
+              <p><span className="font-semibold text-white">Fijo:</span> {business.fijo}</p>
+              <p><span className="font-semibold text-white">Direccion:</span> {business.address}</p>
+              <p className="mt-2 rounded-xl bg-white/10 p-3 text-center font-semibold text-white">{business.hours}</p>
             </div>
             <div className="mt-4 border-t border-white/10 pt-4">
               <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-200">Horario</p>
@@ -1429,6 +1639,18 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      <div className="flex flex-wrap gap-3">
+        <button className="rounded-2xl bg-cyan-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-cyan-600/20 transition hover:-translate-y-0.5" onClick={() => setActiveView("resultados")}>
+          Examen visual
+        </button>
+        <button className="rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:-translate-y-0.5" onClick={() => setActiveView("facturacion")}>
+          Nueva factura
+        </button>
+        <button className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-950/15 transition hover:-translate-y-0.5" onClick={() => setActiveView("inventario")}>
+          Inventario
+        </button>
+      </div>
 
       <section className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80 backdrop-blur">
         <h3 className="text-xl font-black text-slate-950">Estado de resultados simplificado</h3>
@@ -1993,6 +2215,24 @@ export default function App() {
 
         <div className="space-y-6">
           <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
+            <h3 className="text-xl font-black text-slate-950">Contacto y horario</h3>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-cyan-50 p-4 ring-1 ring-cyan-200">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">Celular</p>
+                <p className="mt-2 text-lg font-black text-cyan-900">{business.celular}</p>
+              </div>
+              <div className="rounded-2xl bg-cyan-50 p-4 ring-1 ring-cyan-200">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">Fijo</p>
+                <p className="mt-2 text-lg font-black text-cyan-900">{business.fijo}</p>
+              </div>
+            </div>
+            <div className="mt-3 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-600">Horario de atencion</p>
+              <p className="mt-2 text-lg font-black text-slate-900">{business.hours}</p>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
             <h3 className="text-xl font-black text-slate-950">Cuentas de acceso</h3>
             <div className="mt-4 grid gap-3">
               {users.map((user) => (
@@ -2259,6 +2499,274 @@ export default function App() {
     <EmptyState title="Sin cliente" subtitle="Selecciona un cliente para agendar." />
   );
 
+  const generateExamPDF = useCallback((exam: ExamResult) => {
+    const customer = customers.find(c => c.id === exam.customerId);
+    const pdf = new jsPDF({ unit: "mm", format: "a4" });
+    const pageW = 210;
+    const margin = 20;
+    const y0 = 25;
+    const col1 = margin;
+    const col2 = 105;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18);
+    pdf.text(business.name, pageW / 2, y0, { align: "center" });
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.text(business.address, pageW / 2, y0 + 6, { align: "center" });
+    pdf.text(`Cel: ${business.celular} / Fijo: ${business.fijo}`, pageW / 2, y0 + 12, { align: "center" });
+
+    let y = y0 + 22;
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(0.5);
+    pdf.line(margin, y, pageW - margin, y);
+    y += 8;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+    pdf.text("Resultado de Examen Visual", margin, y);
+    y += 10;
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.text(`Examen: ${exam.id}`, margin, y);
+    pdf.text(`Fecha: ${new Date(exam.date).toLocaleDateString("es-PA", { year: "numeric", month: "long", day: "numeric" })}`, col2, y);
+    y += 7;
+
+    if (customer) {
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Paciente:", margin, y);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(customer.name, margin + 22, y);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Documento:", col2, y);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`${customer.document} DV ${customer.dv}`, col2 + 22, y);
+      y += 7;
+      pdf.text(`Email: ${customer.email}`, margin, y);
+      pdf.text(`Telefono: ${customer.phone}`, col2, y);
+    }
+    y += 12;
+
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, y, pageW - margin, y);
+    y += 6;
+
+    const rxW = (pageW - 2 * margin) / 2;
+    const tableX = [margin, margin + rxW / 2, margin + rxW];
+    const colW = [rxW * 0.35, rxW * 0.25, rxW * 0.25];
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    pdf.text("Formula Optica", margin, y);
+    y += 5;
+
+    const drawRow = (label: string, od: string, oi: string, bold = false) => {
+      pdf.setFont("helvetica", bold ? "bold" : "normal");
+      pdf.text(label, tableX[0], y);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("OD", margin + rxW * 0.55, y);
+      pdf.text("OI", pageW - rxW * 0.25, y);
+      pdf.setFont("helvetica", "normal");
+      y += 2;
+      pdf.setDrawColor(230, 230, 230);
+      pdf.line(margin + rxW, y, pageW - margin, y);
+      y += 1;
+      pdf.text(od, margin + rxW * 0.55, y);
+      pdf.text(oi, pageW - rxW * 0.25, y);
+      y += 6;
+    };
+
+    y += 2;
+    const frx = (v: number) => (v >= 0 ? "+" : "") + v.toFixed(2);
+    drawRow("Esfera (SPH)", frx(exam.odSphere), frx(exam.oiSphere));
+    drawRow("Cilindro (CYL)", frx(exam.odCylinder), frx(exam.oiCylinder));
+    drawRow(`Eje (AXIS)`, `${exam.odAxis}°`, `${exam.oiAxis}°`);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Adicion (ADD): ${exam.add.toFixed(2)}`, margin, y);
+    pdf.text(`DIP: ${exam.dip} mm`, col2, y);
+    y += 8;
+
+    pdf.text(`Requiere lentes: ${exam.needsLenses ? "Si" : "No"}`, margin, y);
+    if (exam.needsLenses) pdf.text(`Tipo recomendado: ${exam.lensType}`, col2, y);
+    y += 8;
+
+    if (exam.notes) {
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Observaciones:", margin, y);
+      y += 5;
+      pdf.setFont("helvetica", "normal");
+      const lines = pdf.splitTextToSize(exam.notes, pageW - 2 * margin);
+      pdf.text(lines, margin, y);
+      y += lines.length * 4 + 4;
+    }
+
+    y = Math.max(y, 250);
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, y, pageW - margin, y);
+    y += 5;
+    pdf.setFontSize(7);
+    pdf.setFont("helvetica", "italic");
+    pdf.text(`${business.name} · ${business.address} · Cel ${business.celular} / Fijo ${business.fijo}`, pageW / 2, y, { align: "center" });
+    pdf.text(business.hours, pageW / 2, y + 4, { align: "center" });
+
+    pdf.save(`examen-visual-${exam.id}.pdf`);
+  }, [customers]);
+
+  const resultsView = (
+    <div className="space-y-8">
+      <SectionTitle title="Examenes de vision" subtitle="Registro de examenes visuales, formula optica y recomendaciones de lentes." />
+      {role === "Administrador" && (
+        <details className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
+          <summary className="cursor-pointer text-lg font-black text-slate-950">Nuevo examen visual</summary>
+          <form className="mt-6 grid gap-6" onSubmit={(e) => {
+            e.preventDefault();
+            const newExam: ExamResult = {
+              id: `EXM-${String(examResults.length + 1).padStart(3, "0")}`,
+              customerId: examForm.customerId,
+              customerName: customers.find(c => c.id === examForm.customerId)?.name ?? "",
+              date: new Date().toISOString(),
+              odSphere: parseFloat(examForm.odSphere) || 0,
+              odCylinder: parseFloat(examForm.odCylinder) || 0,
+              odAxis: parseFloat(examForm.odAxis) || 0,
+              oiSphere: parseFloat(examForm.oiSphere) || 0,
+              oiCylinder: parseFloat(examForm.oiCylinder) || 0,
+              oiAxis: parseFloat(examForm.oiAxis) || 0,
+              add: parseFloat(examForm.add) || 0,
+              dip: parseFloat(examForm.dip) || 0,
+              needsLenses: examForm.needsLenses,
+              lensType: examForm.lensType,
+              notes: examForm.notes,
+              status: "Completado",
+            };
+            setExamResults([newExam, ...examResults]);
+            setExamForm(form => ({ ...form, notes: "" }));
+            (e.currentTarget.querySelector("summary") as HTMLElement)?.click();
+          }}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Paciente
+                <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={examForm.customerId} onChange={e => setExamForm(f => ({ ...f, customerId: e.target.value }))}>
+                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <p className="col-span-full text-sm font-black text-cyan-700">Ojo derecho (OD)</p>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Esfera (SPH)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.odSphere} onChange={e => setExamForm(f => ({ ...f, odSphere: e.target.value }))} placeholder="Ej: -2.00" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Cilindro (CYL)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.odCylinder} onChange={e => setExamForm(f => ({ ...f, odCylinder: e.target.value }))} placeholder="Ej: -0.75" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Eje (AXIS)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.odAxis} onChange={e => setExamForm(f => ({ ...f, odAxis: e.target.value }))} placeholder="Ej: 180" /></label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <p className="col-span-full text-sm font-black text-cyan-700">Ojo izquierdo (OI)</p>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Esfera (SPH)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.oiSphere} onChange={e => setExamForm(f => ({ ...f, oiSphere: e.target.value }))} placeholder="Ej: -2.25" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Cilindro (CYL)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.oiCylinder} onChange={e => setExamForm(f => ({ ...f, oiCylinder: e.target.value }))} placeholder="Ej: -0.50" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Eje (AXIS)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.oiAxis} onChange={e => setExamForm(f => ({ ...f, oiAxis: e.target.value }))} placeholder="Ej: 175" /></label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Adicion (ADD)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.add} onChange={e => setExamForm(f => ({ ...f, add: e.target.value }))} placeholder="Ej: 1.50" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">DIP (mm)<input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" type="text" value={examForm.dip} onChange={e => setExamForm(f => ({ ...f, dip: e.target.value }))} placeholder="Ej: 64" /></label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Requiere lentes
+                <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={examForm.needsLenses ? "si" : "no"} onChange={e => setExamForm(f => ({ ...f, needsLenses: e.target.value === "si" }))}>
+                  <option value="si">Si</option>
+                  <option value="no">No</option>
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Tipo de lente recomendado
+                <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={examForm.lensType} onChange={e => setExamForm(f => ({ ...f, lensType: e.target.value }))}>
+                  <option>Monofocales</option>
+                  <option>Bifocales</option>
+                  <option>Progresivos</option>
+                  <option>Lentes de contacto</option>
+                  <option>Lentes de trabajo</option>
+                  <option>Lentes de sol graduados</option>
+                </select>
+              </label>
+            </div>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Notas / Observaciones
+              <textarea className="min-h-20 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={examForm.notes} onChange={e => setExamForm(f => ({ ...f, notes: e.target.value }))} placeholder="Recomendaciones, hallazgos clinicos..." />
+            </label>
+            <button className="rounded-2xl bg-slate-950 px-8 py-3 font-black text-white shadow-lg shadow-slate-950/15 transition hover:bg-slate-800">Guardar examen</button>
+          </form>
+        </details>
+      )}
+      <div className="grid gap-6">
+        {(role === "Administrador" ? examResults : examResults.filter(e => e.customerId === activeClientId)).map((exam) => {
+          const formatRx = (v: number) => (v >= 0 ? "+" : "") + v.toFixed(2);
+          return (
+            <article key={exam.id} className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-700">{exam.id}</p>
+                  <h3 className="mt-1 text-2xl font-black text-slate-950">{exam.customerName}</h3>
+                  <p className="mt-1 text-sm text-slate-500">{formatDate(exam.date)}</p>
+                </div>
+                <div className="flex gap-2">
+                  <StatusBadge status={exam.status as any} />
+                </div>
+              </div>
+              <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                <div className="rounded-2xl bg-cyan-50 p-4 ring-1 ring-cyan-200">
+                  <p className="text-sm font-black uppercase tracking-[0.15em] text-cyan-700">OD (derecho)</p>
+                  <p className="mt-2 text-lg font-black text-slate-950">{formatRx(exam.odSphere)} {formatRx(exam.odCylinder)} x {exam.odAxis}°</p>
+                  <p className="text-xs text-slate-500">Esfera · Cilindro · Eje</p>
+                </div>
+                <div className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
+                  <p className="text-sm font-black uppercase tracking-[0.15em] text-emerald-700">OI (izquierdo)</p>
+                  <p className="mt-2 text-lg font-black text-slate-950">{formatRx(exam.oiSphere)} {formatRx(exam.oiCylinder)} x {exam.oiAxis}°</p>
+                  <p className="text-xs text-slate-500">Esfera · Cilindro · Eje</p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-6 text-sm">
+                <p><span className="font-bold text-slate-700">ADD:</span> {exam.add.toFixed(2)}</p>
+                <p><span className="font-bold text-slate-700">DIP:</span> {exam.dip} mm</p>
+                <p><span className="font-bold text-slate-700">Lentes:</span> {exam.needsLenses ? exam.lensType : "No requiere"}</p>
+              </div>
+              {exam.notes && <p className="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200">{exam.notes}</p>}
+              <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-200 pt-5">
+                <button className="rounded-xl bg-slate-950 px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-slate-950/15 transition hover:bg-slate-800" onClick={() => generateExamPDF(exam)}>Descargar PDF</button>
+                <button className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700" onClick={() => {
+                  generateExamPDF(exam);
+                  window.open(whatsAppUrl(`Hola ${exam.customerName}, adjunto el resultado de su examen visual (${exam.id}). Puede descargarlo aqui o consultarnos cualquier duda.`), "_blank");
+                }}>PDF + WhatsApp</button>
+              </div>
+            </article>
+          );
+        })}
+        {examResults.length === 0 && <EmptyState title="Sin examenes registrados" subtitle="Realiza un examen visual para ver los resultados aqui." />}
+      </div>
+    </div>
+  );
+
+  const aiSearchView = (
+    <div className="space-y-6">
+      <section className="rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/50 ring-1 ring-slate-200/80">
+        <h2 className="mb-4 text-xl font-black text-slate-950">Conocimiento Optico</h2>
+        <p className="mb-6 text-sm text-slate-500">Busca informacion sobre lentes, monturas, tratamientos, tecnologia optica, marcas y mas. No necesita internet.</p>
+        <form onSubmit={(e) => { e.preventDefault(); if (aiQuery.trim()) handleAISearch(aiQuery); }}>
+          <div className="flex gap-3">
+            <input name="q" value={aiQuery} onChange={(e) => setAiQuery(e.target.value)} className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" placeholder="Ej: lentes progresivos, filtro luz azul, monturas de titanio..." />
+            <button type="submit" disabled={aiLoading} className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-950/15 transition hover:bg-slate-800 disabled:opacity-50">{aiLoading ? "Buscando..." : "Buscar"}</button>
+          </div>
+        </form>
+        {aiError && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-200">{aiError}</p>}
+        {aiResult && (
+          <div className="mt-6 rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-200">
+            <div className="max-w-none text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{aiResult}</div>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+
   const contentByView: Record<View, ReactNode> = {
     panel: panelView,
     inventario: inventoryView,
@@ -2268,6 +2776,8 @@ export default function App() {
     servicios: servicesView,
     usuarios: usersView,
     cumplimiento: complianceView,
+    ia: aiSearchView,
+    resultados: resultsView,
     portal: portalView,
     "mis-facturas": clientInvoicesView,
     recetas: prescriptionsView,
@@ -2321,13 +2831,19 @@ export default function App() {
               <p className="mt-1 text-lg font-black text-slate-950">{role === "Administrador" ? business.owner : activeClient?.name ?? "Cliente"}</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200">
-                <span className="font-black text-slate-950">{business.phone}</span> · {business.address} · usuario {sessionUser}
-              </div>
+              <p className="text-sm font-black italic text-slate-500">Cuidamos tu salud visual con profesionalismo y calidez. Porque ver bien es vivir mejor.</p>
+              <a className="rounded-2xl bg-cyan-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-cyan-600/20" href={`https://www.google.com/maps/search/?api=1&query=8.430183,-82.426391`} target="_blank" rel="noreferrer">
+                Ubicacion
+              </a>
               <a className="rounded-2xl bg-emerald-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-emerald-600/20" href={whatsAppUrl(role === "Cliente" && activeClient ? `Hola, soy ${activeClient.name} y deseo comunicarme con la optica.` : undefined)} target="_blank" rel="noreferrer">
                 WhatsApp
               </a>
               <button className="rounded-2xl bg-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-cyan-600/20" onClick={() => setActiveView(role === "Administrador" ? "facturacion" : "citas")}>{role === "Administrador" ? "Nueva factura" : "Solicitar cita"}</button>
+              {deferredPrompt && (
+                <button className="rounded-2xl bg-amber-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-amber-600/20" onClick={async () => { (deferredPrompt as any).prompt(); const res = await (deferredPrompt as any).userChoice; if (res.outcome === "accepted") setDeferredPrompt(null); }}>
+                  Instalar app
+                </button>
+              )}
               <button className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white" onClick={() => { stopScanner(); supabase.auth.signOut(); setSessionUser(null); }}>Salir</button>
             </div>
           </header>
