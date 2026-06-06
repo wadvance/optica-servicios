@@ -1026,7 +1026,7 @@ export default function App() {
 
   useEffect(() => {
     if ("serviceWorker" in navigator && window.location.protocol === "https:") {
-      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+      navigator.serviceWorker.register("/sw.js?v=2").catch(() => undefined);
     }
     const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e as any); };
     window.addEventListener("beforeinstallprompt", handler);
