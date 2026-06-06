@@ -1711,7 +1711,7 @@ export default function App() {
   const billingView = (
     <div className="space-y-8">
       <SectionTitle title="Facturacion al cliente" subtitle="Punto de venta con RUC/DV o consumidor final, calculo de ITBMS 7%, lineas exentas y representacion CAFE para la factura electronica panamena." />
-      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <div className="space-y-6">
           <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
             <h3 className="text-xl font-black text-slate-950">Nueva factura</h3>
