@@ -1104,7 +1104,7 @@ export default function App() {
   const [invoiceCustomerDoc, setInvoiceCustomerDoc] = useState("");
   const [invoiceCustomerPhone, setInvoiceCustomerPhone] = useState("");
   const [invoiceCustomerAddress, setInvoiceCustomerAddress] = useState("");
-  const [invoiceQty, setInvoiceQty] = useState("1");
+  const [invoiceQty, setInvoiceQty] = useState("");
   const [invoicePayment, setInvoicePayment] = useState("Efectivo");
   const [applyItbms, setApplyItbms] = useState(true);
   const [draftLines, setDraftLines] = useState<InvoiceLine[]>([]);
@@ -1642,21 +1642,19 @@ export default function App() {
     const item = inventory.find((inventoryItem) => inventoryItem.id === invoiceItemId);
     const qty = Number(invoiceQty);
 
-    if (!item || Number.isNaN(qty) || qty <= 0) {
-      return;
-    }
+    if (!item) return;
 
     setDraftLines((lines) => [
       ...lines,
       {
         itemId: item.id,
         description: item.name,
-        qty,
+        qty: qty || 1,
         unitPrice: item.price,
         taxRate: applyItbms ? item.taxRate : 0,
       },
     ]);
-    setInvoiceQty("1");
+    setInvoiceQty("");
   }
 
   function removeInvoiceLine(index: number) {
