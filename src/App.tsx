@@ -2386,14 +2386,18 @@ export default function App() {
               <p className="mb-3 text-sm font-bold text-slate-700">Lineas de compra</p>
               {purchaseLines.length === 0 && <p className="text-sm text-slate-400">Agrega productos a la compra.</p>}
               {purchaseLines.map((line, index) => (
-                <div key={index} className="mb-2 flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
-                  <div className="min-w-0 flex-1">
-                    <span className="font-medium text-slate-700">{line.description}</span>
-                    {line.barcode && <span className="ml-2 font-mono text-xs text-slate-400">BR: {line.barcode}</span>}
+                <div key={index} className="mb-2 rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium text-slate-700">{line.description}</span>
+                      {line.barcode && <div className="mt-0.5 font-mono text-xs font-bold text-cyan-700">Cod: {line.barcode}</div>}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="text-nowrap text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
+                      <span className="font-bold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
+                      <button type="button" onClick={() => removePurchaseLine(index)} className="text-rose-500 hover:text-rose-700">&times;</button>
+                    </div>
                   </div>
-                  <span className="mx-3 text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
-                  <span className="mr-2 font-bold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
-                  <button type="button" onClick={() => removePurchaseLine(index)} className="text-rose-500 hover:text-rose-700">&times;</button>
                 </div>
               ))}
               <div className="mt-3 grid grid-cols-[1fr_140px_70px_100px_40px] gap-2">
@@ -2459,7 +2463,7 @@ export default function App() {
                   <div key={i} className="flex items-center justify-between gap-2 text-sm">
                     <div className="min-w-0 flex-1">
                       <span className="text-slate-700">{line.description}</span>
-                      {line.barcode && <span className="ml-2 font-mono text-xs text-slate-400">{line.barcode}</span>}
+                      {line.barcode && <div className="font-mono text-xs font-bold text-cyan-600">{line.barcode}</div>}
                     </div>
                     <span className="shrink-0 text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
                     <span className="shrink-0 font-semibold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
