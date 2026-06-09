@@ -2558,7 +2558,18 @@ export default function App() {
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Producto o servicio
                 <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceItemId} onChange={(event) => setInvoiceItemId(event.target.value)}>
-                  {inventory.map((item) => <option key={item.id} value={item.id}>{item.name} · {formatMoney(item.price)}</option>)}
+                  {(() => {
+                    const servicios: typeof inventory = [];
+                    const productos: typeof inventory = [];
+                    for (const item of inventory) {
+                      if (item.category?.toLowerCase().includes("servicio")) servicios.push(item);
+                      else productos.push(item);
+                    }
+                    const opts: ReactNode[] = [];
+                    if (servicios.length) opts.push(<optgroup key="serv" label="Servicios">{servicios.map((item) => <option key={item.id} value={item.id}>{item.name} · {formatMoney(item.price)}</option>)}</optgroup>);
+                    if (productos.length) opts.push(<optgroup key="prod" label="Productos">{productos.map((item) => <option key={item.id} value={item.id}>{item.name} · {formatMoney(item.price)}</option>)}</optgroup>);
+                    return opts;
+                  })()}
                 </select>
               </label>
               <label className="grid gap-2 text-sm font-bold text-slate-700">
