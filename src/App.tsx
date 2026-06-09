@@ -31,6 +31,7 @@ export type PurchaseLine = {
   description: string;
   qty: number;
   unitPrice: number;
+  barcode: string;
 };
 
 export type PurchaseOrder = {
@@ -314,9 +315,9 @@ const purchasesSeed: PurchaseOrder[] = [
     dueDate: "2026-05-18",
     status: "Recibida",
     lines: [
-      { description: "Lentes progresivos", qty: 20, unitPrice: 25 },
-      { description: "Monturas metal", qty: 12, unitPrice: 40 },
-      { description: "Lentes antirreflejo", qty: 10, unitPrice: 38 },
+      { description: "Lentes progresivos", qty: 20, unitPrice: 25, barcode: "7501234567890" },
+      { description: "Monturas metal", qty: 12, unitPrice: 40, barcode: "7501234567891" },
+      { description: "Lentes antirreflejo", qty: 10, unitPrice: 38, barcode: "7501234567892" },
     ],
     subtotal: 1680,
     tax: 117.6,
@@ -331,9 +332,9 @@ const purchasesSeed: PurchaseOrder[] = [
     dueDate: "2026-05-24",
     status: "Pendiente",
     lines: [
-      { description: "Soluciones multiproposito", qty: 48, unitPrice: 8.5 },
-      { description: "Estuches para lentes", qty: 24, unitPrice: 5 },
-      { description: "Paños microfibra", qty: 36, unitPrice: 3.5 },
+      { description: "Soluciones multiproposito", qty: 48, unitPrice: 8.5, barcode: "7501234567893" },
+      { description: "Estuches para lentes", qty: 24, unitPrice: 5, barcode: "7501234567894" },
+      { description: "Paños microfibra", qty: 36, unitPrice: 3.5, barcode: "7501234567895" },
     ],
     subtotal: 720,
     tax: 50.4,
@@ -348,8 +349,8 @@ const purchasesSeed: PurchaseOrder[] = [
     dueDate: "2026-05-20",
     status: "Pagada",
     lines: [
-      { description: "Lentes de contacto diarios", qty: 30, unitPrice: 15 },
-      { description: "Lentes de contacto mensuales", qty: 20, unitPrice: 22 },
+      { description: "Lentes de contacto diarios", qty: 30, unitPrice: 15, barcode: "7501234567896" },
+      { description: "Lentes de contacto mensuales", qty: 20, unitPrice: 22, barcode: "7501234567897" },
     ],
     subtotal: 930,
     tax: 65.1,
@@ -889,7 +890,7 @@ export default function App() {
       if (!p.lines && typeof (p as any).items === "number") {
         const qty = (p as any).items || 1;
         const unitPrice = qty > 0 ? Math.round(p.subtotal / qty * 100) / 100 : 0;
-        return { ...p, lines: [{ description: "Producto", qty, unitPrice }] };
+        return { ...p, lines: [{ description: "Producto", qty, unitPrice, barcode: "" }] };
       }
       return p;
     }));
@@ -1115,7 +1116,7 @@ export default function App() {
   const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "", sku: "", stock: "1", minStock: "3", cost: "", price: "", supplier: "", location: "" });
   const [purchaseForm, setPurchaseForm] = useState({ supplier: "", ruc: "", dv: "" });
   const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([]);
-  const [purchaseLineForm, setPurchaseLineForm] = useState({ description: "", qty: "1", unitPrice: "0" });
+  const [purchaseLineForm, setPurchaseLineForm] = useState({ description: "", qty: "1", unitPrice: "0", barcode: "" });
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
   const [purchaseQuery, setPurchaseQuery] = useState("");
   const [purchaseStatusFilter, setPurchaseStatusFilter] = useState("Todas");
@@ -1152,7 +1153,7 @@ export default function App() {
         const migrated = data.purchases.map((p: any) => {
           if (!p.lines && typeof p.items === "number") {
             const unitPrice = p.items > 0 ? Math.round(p.subtotal / p.items * 100) / 100 : 0;
-            return { ...p, lines: [{ description: "Producto", qty: p.items, unitPrice }] };
+            return { ...p, lines: [{ description: "Producto", qty: p.items, unitPrice, barcode: "" }] };
           }
           return p;
         });
@@ -1767,13 +1768,26 @@ export default function App() {
     setInvoices((items) => items.map((invoice) => (invoice.id === id ? { ...invoice, status: "Pagada" } : invoice)));
   }
 
+  function generateBarcode(): string {
+    const used = new Set(purchaseLines.map((l) => l.barcode).filter(Boolean));
+    const invUsed = new Set(inventory.map((i) => i.sku).filter(Boolean));
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const digits = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join("");
+      const code = `750${digits}`;
+      if (!used.has(code) && !invUsed.has(code)) return code;
+    }
+    return `BRC-${Date.now().toString(36).toUpperCase()}`;
+  }
+
   function addPurchaseLine() {
     const description = purchaseLineForm.description.trim();
     const qty = Number(purchaseLineForm.qty);
     const unitPrice = Number(purchaseLineForm.unitPrice);
+    const manualBarcode = purchaseLineForm.barcode?.trim() || "";
     if (!description || Number.isNaN(qty) || qty < 1 || Number.isNaN(unitPrice) || unitPrice < 0) return;
-    setPurchaseLines((prev) => [...prev, { description, qty, unitPrice }]);
-    setPurchaseLineForm({ description: "", qty: "1", unitPrice: "0" });
+    const barcode = manualBarcode || generateBarcode();
+    setPurchaseLines((prev) => [...prev, { description, qty, unitPrice, barcode }]);
+    setPurchaseLineForm({ description: "", qty: "1", unitPrice: "0", barcode: "" });
   }
 
   function removePurchaseLine(index: number) {
@@ -1839,7 +1853,7 @@ export default function App() {
     setEditingPurchaseId(null);
     setPurchaseForm({ supplier: "", ruc: "", dv: "" });
     setPurchaseLines([]);
-    setPurchaseLineForm({ description: "", qty: "1", unitPrice: "0" });
+    setPurchaseLineForm({ description: "", qty: "1", unitPrice: "0", barcode: "" });
   }
 
   function addServicePayment(event: FormEvent<HTMLFormElement>) {
@@ -2373,14 +2387,18 @@ export default function App() {
               {purchaseLines.length === 0 && <p className="text-sm text-slate-400">Agrega productos a la compra.</p>}
               {purchaseLines.map((line, index) => (
                 <div key={index} className="mb-2 flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
-                  <span className="font-medium text-slate-700">{line.description}</span>
-                  <span className="text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
-                  <span className="font-bold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium text-slate-700">{line.description}</span>
+                    {line.barcode && <span className="ml-2 font-mono text-xs text-slate-400">BR: {line.barcode}</span>}
+                  </div>
+                  <span className="mx-3 text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
+                  <span className="mr-2 font-bold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
                   <button type="button" onClick={() => removePurchaseLine(index)} className="text-rose-500 hover:text-rose-700">&times;</button>
                 </div>
               ))}
-              <div className="mt-3 grid grid-cols-[1fr_70px_100px_40px] gap-2">
+              <div className="mt-3 grid grid-cols-[1fr_140px_70px_100px_40px] gap-2">
                 <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-cyan-500" value={purchaseLineForm.description} onChange={(e) => setPurchaseLineForm((f) => ({ ...f, description: e.target.value }))} placeholder="Producto" />
+                <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono outline-none focus:border-cyan-500" value={purchaseLineForm.barcode} onChange={(e) => setPurchaseLineForm((f) => ({ ...f, barcode: e.target.value }))} placeholder="Cod. barra (opcional)" />
                 <input type="number" min="1" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-cyan-500" value={purchaseLineForm.qty} onChange={(e) => setPurchaseLineForm((f) => ({ ...f, qty: e.target.value }))} placeholder="Cant." />
                 <input type="number" min="0" step="0.01" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-cyan-500" value={purchaseLineForm.unitPrice} onChange={(e) => setPurchaseLineForm((f) => ({ ...f, unitPrice: e.target.value }))} placeholder="Precio" />
                 <button type="button" onClick={addPurchaseLine} className="rounded-xl bg-cyan-600 text-sm font-black text-white">+</button>
@@ -2438,10 +2456,13 @@ export default function App() {
               </div>
               <div className="mt-3 space-y-1 border-t border-slate-100 pt-3">
                 {(purchase.lines || []).map((line, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-700">{line.description}</span>
-                    <span className="text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
-                    <span className="font-semibold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
+                  <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-slate-700">{line.description}</span>
+                      {line.barcode && <span className="ml-2 font-mono text-xs text-slate-400">{line.barcode}</span>}
+                    </div>
+                    <span className="shrink-0 text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
+                    <span className="shrink-0 font-semibold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
                   </div>
                 ))}
               </div>
