@@ -2690,7 +2690,7 @@ export default function App() {
               </label>
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Monto
-                <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={serviceForm.amount} onChange={(event) => setServiceForm((form) => ({ ...form, amount: event.target.value }))} />
+                <input type="text" inputMode="decimal" className="w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-2 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={serviceForm.amount} onChange={(event) => setServiceForm((form) => ({ ...form, amount: event.target.value }))} />
               </label>
             </div>
             <button className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20">Guardar pago</button>
