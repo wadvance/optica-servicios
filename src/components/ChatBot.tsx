@@ -88,11 +88,18 @@ function saveHistory(msgs: ChatMessage[]) {
 let msgCounter = 0;
 function msgId() { return `msg-${++msgCounter}-${Date.now()}`; }
 
+function stripPunctuation(s: string): string {
+  return s.replace(/[¿?¡!,.;:()\-"'[\]{}¿¡]/g, "");
+}
+
 function searchKnowledge(query: string, knowledge: KnowledgeEntry[], recentMessages: ChatMessage[]): string {
   const q = query.toLowerCase().trim();
-  const words = q.split(/\s+/).filter(Boolean);
+  const rawWords = q.split(/\s+/).filter(Boolean);
 
-  if (words.length === 0) return "Escribe una palabra clave para buscar en la base de conocimiento.";
+  if (rawWords.length === 0) return "Escribe una palabra clave para buscar en la base de conocimiento.";
+
+  const words = rawWords.map(stripPunctuation).filter((w) => w.length > 0);
+  const cleanQ = stripPunctuation(q);
 
   const matches: { entry: KnowledgeEntry; score: number }[] = [];
 
@@ -111,8 +118,8 @@ function searchKnowledge(query: string, knowledge: KnowledgeEntry[], recentMessa
       if (inContent) score += 1;
     }
 
-    const wholeQueryInContent = contentLow.includes(q);
-    const wholeQueryInTitle = titleLow.includes(q);
+    const wholeQueryInContent = contentLow.includes(cleanQ);
+    const wholeQueryInTitle = titleLow.includes(cleanQ);
     if (wholeQueryInContent || wholeQueryInTitle) score += 5;
 
     if (score > 0) {
