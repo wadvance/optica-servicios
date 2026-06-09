@@ -1109,7 +1109,7 @@ export default function App() {
   const [applyItbms, setApplyItbms] = useState(true);
   const [draftLines, setDraftLines] = useState<InvoiceLine[]>([]);
   const [appointmentForm, setAppointmentForm] = useState({ date: "2026-06-21", time: "10:00", reason: "Examen visual" });
-  const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "", sku: "", stock: "1", minStock: "3", cost: "", price: "", supplier: "", location: "" });
+  const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
   const [purchaseForm, setPurchaseForm] = useState({ supplier: "", ruc: "", dv: "" });
   const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([]);
   const [purchaseLineForm, setPurchaseLineForm] = useState({ description: "", qty: "1", unitPrice: "0", barcode: "" });
@@ -1590,13 +1590,13 @@ export default function App() {
   function addInventoryItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const sku = newInventoryItem.sku.trim();
-    const stock = Number(newInventoryItem.stock);
-    const minStock = Number(newInventoryItem.minStock);
+    const stock = Number(newInventoryItem.stock) || 0;
+    const minStock = Number(newInventoryItem.minStock) || 0;
     const price = Number(newInventoryItem.price);
     const cost = Number(newInventoryItem.cost) || Math.round(price * 0.45 * 100) / 100;
     const existingItem = sku ? inventory.find((item) => item.sku.toLowerCase() === sku.toLowerCase()) : undefined;
 
-    if (!sku || Number.isNaN(stock) || stock <= 0 || Number.isNaN(minStock) || Number.isNaN(price) || !newInventoryItem.name.trim()) {
+    if (!sku || Number.isNaN(price) || !newInventoryItem.name.trim()) {
       return;
     }
 
@@ -1635,7 +1635,7 @@ export default function App() {
     }
 
     setInventoryQuery(sku);
-    setNewInventoryItem({ name: "", category: "", sku: "", stock: "1", minStock: "3", cost: "", price: "", supplier: "", location: "" });
+    setNewInventoryItem({ name: "", category: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
   }
 
   function addInvoiceLine() {
