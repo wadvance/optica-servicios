@@ -2248,11 +2248,11 @@ export default function App() {
         </section>
       )}
 
-      <section className="grid gap-6 lg:grid-cols-[0.7fr_1.3fr]">
+      <section className="grid gap-6">
         <form className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80" onSubmit={addInventoryItem}>
           <h3 className="text-xl font-black text-slate-950">Registrar producto</h3>
           <p className="mt-1 text-sm text-slate-500">Usa el escaner o completa los campos manualmente. Si el SKU ya existe se agregara stock automaticamente.</p>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="mt-5 grid max-w-xl gap-4">
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               Nombre del producto
               <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.name} onChange={(event) => setNewInventoryItem((item) => ({ ...item, name: event.target.value }))} placeholder="Ej. Montura infantil" />
@@ -2299,9 +2299,7 @@ export default function App() {
               Precio de venta
               <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.price} onChange={(event) => setNewInventoryItem((item) => ({ ...item, price: event.target.value }))} placeholder="B/. 0.00" />
             </label>
-            <div className="sm:col-span-2">
-              <button className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20">Guardar producto</button>
-            </div>
+            <button className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20">Guardar producto</button>
           </div>
         </form>
 
@@ -2313,7 +2311,7 @@ export default function App() {
             </select>
           </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4">
             {visibleInventory.map((item) => (
               <div key={item.id} className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
