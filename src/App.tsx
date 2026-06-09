@@ -2248,11 +2248,11 @@ export default function App() {
         </section>
       )}
 
-      <section className="grid gap-6 lg:grid-cols-[1fr_1.5fr]">
+      <section className="grid gap-6">
         <form className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80" onSubmit={addInventoryItem}>
           <h3 className="text-xl font-black text-slate-950">Registrar producto</h3>
           <p className="mt-1 text-sm text-slate-500">Usa el escaner o completa los campos manualmente. Si el SKU ya existe se agregara stock automaticamente.</p>
-          <div className="mt-5 grid gap-4">
+          <div className="mt-5 grid max-w-xl gap-4">
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               Nombre del producto
               <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.name} onChange={(event) => setNewInventoryItem((item) => ({ ...item, name: event.target.value }))} placeholder="Ej. Montura infantil" />
