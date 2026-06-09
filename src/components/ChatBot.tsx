@@ -34,7 +34,7 @@ type Invoice = {
 
 type PurchaseOrder = {
   id: string; supplier: string; ruc: string; dv: string; date: string;
-  dueDate: string; status: string; lines: any[]; subtotal: number;
+  status: string; lines: any[]; subtotal: number;
   tax: number; total: number;
 };
 

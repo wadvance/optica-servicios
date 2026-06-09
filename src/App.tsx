@@ -40,7 +40,6 @@ export type PurchaseOrder = {
   ruc: string;
   dv: string;
   date: string;
-  dueDate: string;
   status: "Pendiente" | "Recibida" | "Pagada";
   lines: PurchaseLine[];
   subtotal: number;
@@ -312,7 +311,6 @@ const purchasesSeed: PurchaseOrder[] = [
     ruc: "1556842-1-742001",
     dv: "41",
     date: "2026-05-03",
-    dueDate: "2026-05-18",
     status: "Recibida",
     lines: [
       { description: "Lentes progresivos", qty: 20, unitPrice: 25, barcode: "7501234567890" },
@@ -329,7 +327,6 @@ const purchasesSeed: PurchaseOrder[] = [
     ruc: "890122-1-533221",
     dv: "09",
     date: "2026-05-10",
-    dueDate: "2026-05-24",
     status: "Pendiente",
     lines: [
       { description: "Soluciones multiproposito", qty: 48, unitPrice: 8.5, barcode: "7501234567893" },
@@ -346,7 +343,6 @@ const purchasesSeed: PurchaseOrder[] = [
     ruc: "1992021-1-690010",
     dv: "66",
     date: "2026-05-12",
-    dueDate: "2026-05-20",
     status: "Pagada",
     lines: [
       { description: "Lentes de contacto diarios", qty: 30, unitPrice: 15, barcode: "7501234567896" },
@@ -1818,7 +1814,6 @@ export default function App() {
           ruc: purchaseForm.ruc || "Proveedor sin RUC",
           dv: purchaseForm.dv || "00",
           date: todayDate(),
-          dueDate: "2026-06-30",
           status: "Pendiente",
           lines: [...purchaseLines],
           subtotal,
@@ -1980,7 +1975,7 @@ export default function App() {
     y += 6;
     pdf.text(`RUC: ${purchase.ruc}  DV: ${purchase.dv}`, margin, y);
     y += 6;
-    pdf.text(`Fecha: ${formatDate(purchase.date)}  Vence: ${formatDate(purchase.dueDate)}`, margin, y);
+    pdf.text(`Fecha: ${formatDate(purchase.date)}`, margin, y);
     y += 6;
     pdf.text(`Estado: ${purchase.status}`, margin, y);
     y += 10;
@@ -2449,8 +2444,6 @@ export default function App() {
                     <span className="text-slate-700">{purchase.dv}</span>
                     <span className="font-semibold text-slate-500">Emisión:</span>
                     <span className="text-slate-700">{formatDate(purchase.date)}</span>
-                    <span className="font-semibold text-slate-500">Vence:</span>
-                    <span className="text-slate-700">{formatDate(purchase.dueDate)}</span>
                   </div>
                 </div>
                 <div className="text-left md:text-right">
