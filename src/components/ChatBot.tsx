@@ -92,39 +92,35 @@ function searchKnowledge(query: string, knowledge: KnowledgeEntry[], recentMessa
   const q = query.toLowerCase().trim();
   const words = q.split(/\s+/).filter(Boolean);
 
-  const contextWords: string[] = [];
-  for (let i = recentMessages.length - 1; i >= 0; i--) {
-    const m = recentMessages[i];
-    if (m.role === "user") {
-      contextWords.push(...m.text.toLowerCase().split(/\s+/).filter(Boolean));
-      break;
+  if (words.length === 0) return "Escribe una palabra clave para buscar en la base de conocimiento.";
+
+  const matches: { entry: KnowledgeEntry; score: number }[] = [];
+
+  for (const entry of knowledge) {
+    let score = 0;
+    const titleLow = entry.title.toLowerCase();
+    const contentLow = entry.content.toLowerCase();
+
+    for (const word of words) {
+      const inKeywords = entry.keywords.some((kw) => kw.includes(word) || word.includes(kw));
+      const inTitle = titleLow.includes(word);
+      const inContent = contentLow.includes(word);
+
+      if (inKeywords) score += 3;
+      if (inTitle) score += 2;
+      if (inContent) score += 1;
+    }
+
+    const wholeQueryInContent = contentLow.includes(q);
+    const wholeQueryInTitle = titleLow.includes(q);
+    if (wholeQueryInContent || wholeQueryInTitle) score += 5;
+
+    if (score > 0) {
+      matches.push({ entry, score });
     }
   }
-  const allWords = [...new Set([...words, ...contextWords])];
 
-  const scored = knowledge.map((entry) => {
-    let score = 0;
-    for (const word of allWords) {
-      for (const kw of entry.keywords) {
-        if (kw.includes(word) || word.includes(kw)) score += 5;
-      }
-      if (entry.title.toLowerCase().includes(word)) score += 4;
-      if (entry.content.toLowerCase().includes(word)) score += 1;
-    }
-    if (entry.keywords.some((kw) => q.includes(kw) || kw.includes(q))) score += 10;
-    return { entry, score };
-  });
-
-  const best = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
-
-  if (best.length === 0) {
-    const partial = knowledge.filter((e) =>
-      e.keywords.some((kw) => words.some((w) => kw.includes(w) || w.includes(kw)))
-    );
-    if (partial.length > 0) {
-      const suggestions = partial.map((e) => `- ${e.title}`).join("\n");
-      return `No encontre una respuesta exacta, pero quizas te interese alguno de estos temas:\n\n${suggestions}\n\nPregunta con mas detalle y podre ayudarte mejor.`;
-    }
+  if (matches.length === 0) {
     return (
       "No encontre informacion sobre esa consulta. Puedo ayudarte con estos temas:\n\n" +
       "**Lentes:** progresivos, bifocales, monofocales, fotocromaticos, polarizados, filtro luz azul, antireflejo\n" +
@@ -136,14 +132,17 @@ function searchKnowledge(query: string, knowledge: KnowledgeEntry[], recentMessa
     );
   }
 
-  const threshold = best[0].score * 0.6;
-  const top = best.filter((s) => s.score >= threshold).slice(0, 3);
+  matches.sort((a, b) => b.score - a.score);
+
+  const maxScore = matches[0].score;
+  const threshold = maxScore * 0.4;
+  const top = matches.filter((m) => m.score >= threshold).slice(0, 5);
 
   const formatted = top.map((s) => `**${s.entry.title}**\n${s.entry.content}`);
 
-  if (top.length > 1) {
+  if (matches.length > top.length) {
     formatted.push(
-      `\n*Tambien encontre otros resultados relacionados. Si necesitas mas detalles, preguntame!*`
+      `\n*Encontre ${matches.length} resultados. Si necesitas mas detalles, preguntame!*`
     );
   }
 
