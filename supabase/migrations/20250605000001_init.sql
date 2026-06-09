@@ -142,13 +142,13 @@ alter table tech_advances enable row level security;
 
 -- RLS: Permitir acceso autenticado a todos los registros
 -- (se puede refinar por rol en produccion)
-create policy "Acceso para usuarios autenticados" on profiles for all using (auth.role() = 'authenticated');
-create policy "Acceso para usuarios autenticados" on inventory_items for all using (auth.role() = 'authenticated');
-create policy "Acceso para usuarios autenticados" on purchase_orders for all using (auth.role() = 'authenticated');
-create policy "Acceso para usuarios autenticados" on service_payments for all using (auth.role() = 'authenticated');
-create policy "Acceso para usuarios autenticados" on customers for all using (auth.role() = 'authenticated');
-create policy "Acceso para usuarios autenticados" on invoices for all using (auth.role() = 'authenticated');
-create policy "Acceso para usuarios autenticados" on invoice_lines for all using (auth.role() = 'authenticated');
-create policy "Acceso para usuarios autenticados" on appointments for all using (auth.role() = 'authenticated');
-create policy "Acceso para usuarios autenticados" on user_accounts for all using (auth.role() = 'authenticated');
-create policy "Acceso para usuarios autenticados" on tech_advances for all using (auth.role() = 'authenticated');
+create policy if not exists "Acceso para usuarios autenticados" on profiles for all using (auth.role() = 'authenticated');
+create policy if not exists "Acceso para usuarios autenticados" on inventory_items for all using (auth.role() = 'authenticated');
+create policy if not exists "Acceso para usuarios autenticados" on purchase_orders for all using (auth.role() = 'authenticated');
+create policy if not exists "Acceso para usuarios autenticados" on service_payments for all using (auth.role() = 'authenticated');
+create policy if not exists "Acceso para usuarios autenticados" on customers for all using (auth.role() = 'authenticated');
+create policy if not exists "Acceso para usuarios autenticados" on invoices for all using (auth.role() = 'authenticated');
+create policy if not exists "Acceso para usuarios autenticados" on invoice_lines for all using (auth.role() = 'authenticated');
+create policy if not exists "Acceso para usuarios autenticados" on appointments for all using (auth.role() = 'authenticated');
+create policy if not exists "Acceso para usuarios autenticados" on user_accounts for all using (auth.role() = 'authenticated');
+create policy if not exists "Acceso para usuarios autenticados" on tech_advances for all using (auth.role() = 'authenticated');

@@ -4,10 +4,12 @@ import { cn } from "./utils/cn";
 import { supabase } from "./lib/supabase";
 import { sendRegistrationEmail } from "./lib/email";
 import { loadAllSeedData, saveInventory, savePurchases, saveServicePayments, saveCustomers, saveInvoices, saveAppointments, saveUserAccounts } from "./lib/supabase-data";
+import ChatBot from "./components/ChatBot";
 
-type Role = "Administrador" | "Cliente";
+type Role = "Super Admin" | "Administrador" | "Cliente";
+const isAdminRole = (r: Role) => r === "Super Admin" || r === "Administrador";
 type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "historias" | "avances" | "servicios" | "usuarios" | "cumplimiento" | "ia" | "resultados";
-type ClientView = "portal" | "mis-facturas" | "recetas" | "citas" | "resultados";
+type ClientView = "portal" | "mis-facturas" | "recetas" | "citas" | "resultados" | "ia";
 type View = AdminView | ClientView;
 
 export type InventoryItem = {
@@ -25,6 +27,12 @@ export type InventoryItem = {
   status: "Activo" | "Bajo stock" | "Servicio";
 };
 
+export type PurchaseLine = {
+  description: string;
+  qty: number;
+  unitPrice: number;
+};
+
 export type PurchaseOrder = {
   id: string;
   supplier: string;
@@ -33,7 +41,7 @@ export type PurchaseOrder = {
   date: string;
   dueDate: string;
   status: "Pendiente" | "Recibida" | "Pagada";
-  items: number;
+  lines: PurchaseLine[];
   subtotal: number;
   tax: number;
   total: number;
@@ -101,6 +109,7 @@ export type Appointment = {
   id: string;
   customerId: string;
   date: string;
+  time: string;
   reason: string;
   status: "Solicitada" | "Confirmada" | "Completada";
 };
@@ -191,9 +200,8 @@ const clientNav: { id: ClientView; label: string; description: string }[] = [
   { id: "recetas", label: "Recetas", description: "Formula optica" },
   { id: "citas", label: "Citas", description: "Solicitudes" },
   { id: "resultados", label: "Resultados", description: "Mis examenes de vision" },
+  { id: "ia", label: "Asistente IA", description: "Chatbot optico inteligente" },
 ];
-
-const categories = ["Todas", "Monturas", "Lentes oftalmicos", "Lentes de contacto", "Accesorios", "Servicios clinicos"];
 
 const inventorySeed: InventoryItem[] = [
   {
@@ -305,7 +313,11 @@ const purchasesSeed: PurchaseOrder[] = [
     date: "2026-05-03",
     dueDate: "2026-05-18",
     status: "Recibida",
-    items: 42,
+    lines: [
+      { description: "Lentes progresivos", qty: 20, unitPrice: 25 },
+      { description: "Monturas metal", qty: 12, unitPrice: 40 },
+      { description: "Lentes antirreflejo", qty: 10, unitPrice: 38 },
+    ],
     subtotal: 1680,
     tax: 117.6,
     total: 1797.6,
@@ -318,7 +330,11 @@ const purchasesSeed: PurchaseOrder[] = [
     date: "2026-05-10",
     dueDate: "2026-05-24",
     status: "Pendiente",
-    items: 18,
+    lines: [
+      { description: "Soluciones multiproposito", qty: 48, unitPrice: 8.5 },
+      { description: "Estuches para lentes", qty: 24, unitPrice: 5 },
+      { description: "Paños microfibra", qty: 36, unitPrice: 3.5 },
+    ],
     subtotal: 720,
     tax: 50.4,
     total: 770.4,
@@ -331,7 +347,10 @@ const purchasesSeed: PurchaseOrder[] = [
     date: "2026-05-12",
     dueDate: "2026-05-20",
     status: "Pagada",
-    items: 64,
+    lines: [
+      { description: "Lentes de contacto diarios", qty: 30, unitPrice: 15 },
+      { description: "Lentes de contacto mensuales", qty: 20, unitPrice: 22 },
+    ],
     subtotal: 930,
     tax: 65.1,
     total: 995.1,
@@ -516,8 +535,8 @@ const invoicesSeed: Invoice[] = [
 ];
 
 const appointmentsSeed: Appointment[] = [
-  { id: "CT-015", customerId: "CLI-001", date: "2026-06-12", reason: "Ajuste de montura y control visual", status: "Confirmada" },
-  { id: "CT-016", customerId: "CLI-002", date: "2026-06-14", reason: "Revision de lentes de contacto", status: "Solicitada" },
+  { id: "CT-015", customerId: "CLI-001", date: "2026-06-12", time: "09:00", reason: "Ajuste de montura y control visual", status: "Confirmada" },
+  { id: "CT-016", customerId: "CLI-002", date: "2026-06-14", time: "14:30", reason: "Revision de lentes de contacto", status: "Solicitada" },
 ];
 
 const usersSeed: UserAccount[] = [
@@ -580,7 +599,19 @@ function generateCufe(nextNumber: number) {
     .toUpperCase()}`;
 }
 
-function whatsAppUrl(message = `Hola, deseo comunicarme con ${business.name}.`) {
+function whatsAppUrl(roleOrMessage?: Role | string, activeClientName?: string, fromFab = false) {
+  let message: string;
+  if (typeof roleOrMessage === "string") {
+    message = roleOrMessage;
+  } else if (roleOrMessage === "Cliente" && activeClientName) {
+    message = fromFab
+      ? `Hola, soy ${activeClientName}. Necesito asistencia de ${business.name}.`
+      : `Hola, soy ${activeClientName} y deseo comunicarme con la optica.`;
+  } else if (roleOrMessage === "Administrador" || roleOrMessage === "Super Admin") {
+    message = `Hola, soy ${business.owner} de ${business.name}.`;
+  } else {
+    message = `Hola, deseo comunicarme con ${business.name}.`;
+  }
   return `https://wa.me/${business.whatsapp}?text=${encodeURIComponent(message)}`;
 }
 
@@ -613,16 +644,19 @@ function AuthScreen({
   onLogin,
 }: {
   registeredUser: AuthUser | null;
-  onRegister: (username: string, password: string) => string;
+  onRegister: (username: string, password: string, role: Role) => string;
   onLogin: (username: string, password: string) => string;
 }) {
   const [mode, setMode] = useState<AuthMode>(registeredUser ? "ingreso" : "registro");
   const [form, setForm] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [registerRole, setRegisterRole] = useState<Role>("Administrador");
   const [message, setMessage] = useState("");
   const rules = passwordRules(form.password);
 
   useEffect(() => {
     setMode(registeredUser ? "ingreso" : "registro");
+    setRegisterRole(registeredUser ? "Administrador" : "Super Admin");
     if (registeredUser) {
       setForm({ email: registeredUser.email, password: "" });
     } else {
@@ -632,8 +666,9 @@ function AuthScreen({
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = await (mode === "registro" ? onRegister(form.email, form.password) : onLogin(form.email, form.password));
+    const result = await (mode === "registro" ? onRegister(form.email, form.password, registerRole) : onLogin(form.email, form.password));
     setMessage(result);
+    setForm({ email: "", password: "" });
   }
 
   return (
@@ -654,7 +689,7 @@ function AuthScreen({
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Metric label="Clave" value="8 max." caption="Mayuscula, numero y caracter especial." tone="cyan" />
+            <Metric label="Clave" value="12 max." caption="Mayuscula, numero y caracter especial." tone="cyan" />
             <Metric label="Contacto" value="WhatsApp" caption="Canal directo para clientes de la optica." tone="emerald" />
           </div>
           <a className="inline-flex rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20" href={whatsAppUrl()} target="_blank" rel="noreferrer">
@@ -664,10 +699,10 @@ function AuthScreen({
 
         <section className="reveal-up rounded-[2rem] bg-white/85 p-6 shadow-2xl shadow-slate-300/50 ring-1 ring-slate-200 backdrop-blur sm:p-8">
           <div className="grid grid-cols-2 gap-2 rounded-full bg-slate-100 p-1">
-            <button className={cn("rounded-full px-4 py-3 text-sm font-black transition", mode === "registro" ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => { setMode("registro"); setForm({ email: "", password: "" }); }}>
+            <button className={cn("rounded-full px-4 py-3 text-sm font-black transition", mode === "registro" ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => { setMode("registro"); setRegisterRole(registeredUser ? "Administrador" : "Super Admin"); setForm({ email: "", password: "" }); }}>
               Registro
             </button>
-            <button className={cn("rounded-full px-4 py-3 text-sm font-black transition", mode === "ingreso" ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => { setMode("ingreso"); setForm({ email: registeredUser?.email ?? "", password: "" }); }} disabled={!registeredUser}>
+            <button className={cn("rounded-full px-4 py-3 text-sm font-black transition", mode === "ingreso" ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => { setMode("ingreso"); setForm({ email: "", password: "" }); }} disabled={!registeredUser}>
               Ingreso
             </button>
           </div>
@@ -688,16 +723,51 @@ function AuthScreen({
 
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               Contrasena
-              <input
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-                    maxLength={12}
-                    type="password"
-                    value={form.password}
-                    onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                    placeholder="Escribe tu contrasena"
-                autoComplete={mode === "registro" ? "new-password" : "current-password"}
-              />
+              <div className="relative">
+                <input
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-12 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                  maxLength={12}
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                  placeholder="Escribe tu contrasena"
+                  autoComplete={mode === "registro" ? "new-password" : "current-password"}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </label>
+
+            {mode === "registro" && (
+              <div className="grid gap-2">
+                <p className="text-sm font-bold text-slate-700">Registrarse como</p>
+                <div className="grid grid-cols-2 gap-2 rounded-full bg-slate-100 p-1">
+                  {(registeredUser ? ["Administrador", "Cliente"] : ["Super Admin"] as Role[]).map((item) => (
+                    <button key={item} type="button" className={cn("rounded-full px-4 py-3 text-sm font-black transition", registerRole === item ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => setRegisterRole(item)}>
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="grid gap-2 rounded-3xl bg-slate-50 p-4">
               {rules.map((rule) => (
@@ -800,7 +870,7 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
 export default function App() {
   const [registeredUser, setRegisteredUser] = usePersistentState<AuthUser | null>("sop-auth-user", null);
   const [sessionUser, setSessionUser] = usePersistentState<string | null>("sop-session-user", null);
-  const [role, setRole] = usePersistentState<Role>("sop-role", "Administrador");
+  const [role, setRole] = usePersistentState<Role>("sop-role", "Super Admin");
   const [activeView, setActiveView] = usePersistentState<View>("sop-view", "panel");
   const [inventory, setInventory] = usePersistentState<InventoryItem[]>("sop-inventory", inventorySeed);
   const [purchases, setPurchases] = usePersistentState<PurchaseOrder[]>("sop-purchases", purchasesSeed);
@@ -811,7 +881,28 @@ export default function App() {
   const [users, setUsers] = usePersistentState<UserAccount[]>("sop-users", usersSeed);
   const [techAdvances] = useState<TechAdvance[]>(techAdvancesSeed);
   const [examResults, setExamResults] = usePersistentState<ExamResult[]>("sop-exams", []);
-  const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null);
+  const [darkMode, setDarkMode] = usePersistentState<boolean>("sop-theme", true);
+  const [isMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 1024);
+
+  useEffect(() => {
+    setPurchases((prev) => prev.map((p) => {
+      if (!p.lines && typeof (p as any).items === "number") {
+        const qty = (p as any).items || 1;
+        const unitPrice = qty > 0 ? Math.round(p.subtotal / qty * 100) / 100 : 0;
+        return { ...p, lines: [{ description: "Producto", qty, unitPrice }] };
+      }
+      return p;
+    }));
+  }, []);
+
+  const isStandalone = typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches;
+  const canInstall = !isStandalone;
+
+  useEffect(() => {
+    const handler = (e: Event) => { e.preventDefault(); };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
 
   const [examForm, setExamForm] = useState({
     customerId: customers[0]?.id ?? "",
@@ -964,6 +1055,21 @@ export default function App() {
       title: "Lentes para Piel Sensible (Hipoalergenicos)",
       content: "Monturas hipoalergenicas: titanio (puro o beta), acetato, acero inoxidable quirurgico, plastica flexon (memoria). Evitar niquel, cobalto y cromo. Tratamiento antialergico disponible en algunas monturas."
     },
+    {
+      keywords: ["cita", "agendar", "reservar", "programar", "revision", "examen visual", "consulta"],
+      title: "Agendar una Cita",
+      content: "Puedes solicitar una cita directamente desde la seccion de Citas en el menu lateral. Selecciona una fecha y describe el motivo de tu visita (examen visual, ajuste de montura, seguimiento de lentes de contacto, etc.). Recibiras confirmacion por parte del equipo de Servicios Opticos Profesionales."
+    },
+    {
+      keywords: ["cancelar cita", "reprogramar", "modificar cita", "cambio fecha"],
+      title: "Cancelar o Reprogramar una Cita",
+      content: "Si necesitas cancelar o reprogramar tu cita, contactanos por WhatsApp al +507 6682-7364 o visita la optica directamente. Te recomendamos hacer cambios con al menos 24 horas de anticipacion."
+    },
+    {
+      keywords: ["que necesito para una cita", "requisitos cita", "preparacion", "que llevar"],
+      title: "Preparacion para una Cita",
+      content: "Para tu cita de examen visual: trae tus lentes actuales (si usas), tu cedula o documento de identidad, lista de medicamentos que tomas (si aplica), y cualquier receta o formula anterior. Si usas lentes de contacto, usalos el dia de la cita para que el optometra pueda evaluar su ajuste."
+    },
   ], []);
 
   const handleAISearch = useCallback((query: string) => {
@@ -993,7 +1099,7 @@ export default function App() {
 
   const [inventoryQuery, setInventoryQuery] = useState("");
   const [inventoryCategory, setInventoryCategory] = useState("Todas");
-  const [activeClientId, setActiveClientId] = useState(customers[0]?.id ?? "CLI-001");
+  const [activeClientId, setActiveClientId] = useState<string | null>(null);
   const [activeInvoiceId, setActiveInvoiceId] = useState(invoices[0]?.id ?? "");
   const [invoiceCustomerId, setInvoiceCustomerId] = useState(customers[0]?.id ?? "CLI-001");
   const [invoiceItemId, setInvoiceItemId] = useState(inventory[0]?.id ?? "INV-001");
@@ -1005,9 +1111,15 @@ export default function App() {
   const [invoicePayment, setInvoicePayment] = useState("Efectivo");
   const [applyItbms, setApplyItbms] = useState(true);
   const [draftLines, setDraftLines] = useState<InvoiceLine[]>([]);
-  const [appointmentForm, setAppointmentForm] = useState({ date: "2026-06-21", reason: "Examen visual" });
-  const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "Monturas", sku: "", stock: "6", minStock: "3", cost: "", price: "45", supplier: "" });
-  const [purchaseForm, setPurchaseForm] = useState({ supplier: "", ruc: "", dv: "", items: "1", subtotal: "100" });
+  const [appointmentForm, setAppointmentForm] = useState({ date: "2026-06-21", time: "10:00", reason: "Examen visual" });
+  const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "", sku: "", stock: "1", minStock: "3", cost: "", price: "", supplier: "", location: "" });
+  const [purchaseForm, setPurchaseForm] = useState({ supplier: "", ruc: "", dv: "" });
+  const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([]);
+  const [purchaseLineForm, setPurchaseLineForm] = useState({ description: "", qty: "1", unitPrice: "0" });
+  const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
+  const [purchaseQuery, setPurchaseQuery] = useState("");
+  const [purchaseStatusFilter, setPurchaseStatusFilter] = useState("Todas");
+  const [invoiceQuery, setInvoiceQuery] = useState("");
   const [serviceForm, setServiceForm] = useState({ service: "", provider: "", category: "Servicios publicos" as ServiceCategory, dueDate: "2026-06-30", amount: "0" });
   const [customerForm, setCustomerForm] = useState({ name: "", document: "", dv: "", email: "", phone: "", address: "", prescription: "" });
   const [salesPeriod, setSalesPeriod] = useState<"dia" | "semana" | "mes">("dia");
@@ -1018,25 +1130,16 @@ export default function App() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerStatus, setScannerStatus] = useState("Abre la camara y apunta al codigo de barras o QR del producto.");
   const [detectedSku, setDetectedSku] = useState("");
-  const [scannerForm, setScannerForm] = useState({
-    sku: "",
-    name: "",
-    category: "Monturas",
-    stock: "1",
-    minStock: "3",
-    cost: "0",
-    price: "45",
-    supplier: "Proveedor por asignar",
-    location: "Deposito",
-  });
 
   useEffect(() => {
     if ("serviceWorker" in navigator && window.location.protocol === "https:") {
-      navigator.serviceWorker.register("/sw.js?v=2").catch(() => undefined);
+      caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key)))).catch(() => undefined);
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => reg.unregister());
+      }).catch(() => undefined);
+      const swUrl = `/sw.js?v=${Date.now()}`;
+      navigator.serviceWorker.register(swUrl).catch(() => undefined);
     }
-    const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e as any); };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
   // Sync: load data from Supabase on mount (replaces localStorage if available)
@@ -1045,7 +1148,16 @@ export default function App() {
     loadAllSeedData().then((data) => {
       if (cancelled) return;
       if (data.inventory.length > 0) setInventory(data.inventory);
-      if (data.purchases.length > 0) setPurchases(data.purchases);
+      if (data.purchases.length > 0) {
+        const migrated = data.purchases.map((p: any) => {
+          if (!p.lines && typeof p.items === "number") {
+            const unitPrice = p.items > 0 ? Math.round(p.subtotal / p.items * 100) / 100 : 0;
+            return { ...p, lines: [{ description: "Producto", qty: p.items, unitPrice }] };
+          }
+          return p;
+        });
+        setPurchases(migrated);
+      }
       if (data.servicePayments.length > 0) setServicePayments(data.servicePayments);
       if (data.customers.length > 0) setCustomers(data.customers);
       if (data.invoices.length > 0) setInvoices(data.invoices);
@@ -1064,66 +1176,61 @@ export default function App() {
   useEffect(() => { const t = setTimeout(() => saveAppointments(appointments), 0); return () => clearTimeout(t); }, [appointments]);
   useEffect(() => { const t = setTimeout(() => saveUserAccounts(users), 0); return () => clearTimeout(t); }, [users]);
 
-  useEffect(() => {
-    if (!scannerOpen) {
-      stopScanner();
+  useEffect(() => { document.documentElement.classList.toggle("dark", darkMode); }, [darkMode]);
+
+  const startScanner = useCallback(async () => {
+    setScannerStatus("Solicitando permiso de camara...");
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setScannerStatus("Este navegador no permite abrir la camara. Ingresa el codigo manualmente.");
       return;
     }
 
-    let cancelled = false;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+      streamRef.current = stream;
+      setScannerOpen(true);
+    } catch {
+      setScannerStatus("No se pudo abrir la camara. Revisa permisos o usa HTTPS y registra el SKU manualmente.");
+    }
+  }, []);
 
-    async function startCameraScanner() {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setScannerStatus("Este navegador no permite abrir la camara. Ingresa el codigo manualmente.");
-        return;
-      }
+  const streamAttachedRef = useRef(false);
 
-      try {
-        setScannerStatus("Solicitando permiso de camara...");
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
-
-        if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-
-        streamRef.current = stream;
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-
-        if (!window.BarcodeDetector) {
-          setScannerStatus("Camara activa. Tu navegador no soporta lectura automatica; escribe el codigo en el campo SKU.");
-          return;
-        }
-
-        const detector = new window.BarcodeDetector();
-        setScannerStatus("Camara activa. Apunta al codigo de barras o QR del producto.");
-        scanBarcodeFrame(detector);
-      } catch {
-        setScannerStatus("No se pudo abrir la camara. Revisa permisos o usa HTTPS/localhost y registra el SKU manualmente.");
-      }
+  useEffect(() => {
+    if (!scannerOpen) {
+      stopScanner();
+      streamAttachedRef.current = false;
+      return;
     }
 
-    startCameraScanner();
+    if (!videoRef.current || !streamRef.current || streamAttachedRef.current) return;
 
-    return () => {
-      cancelled = true;
-      stopScanner();
-    };
-  }, [scannerOpen]);
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    video.srcObject = stream;
+    video.play();
+    streamAttachedRef.current = true;
+
+    if (!window.BarcodeDetector) {
+      setScannerStatus("Camara activa. Tu navegador no soporta lectura automatica; escribe el codigo en el campo SKU.");
+      return;
+    }
+
+    const detector = new window.BarcodeDetector();
+    setScannerStatus("Camara activa. Apunta al codigo de barras o QR del producto.");
+    scanBarcodeFrame(detector);
+  });
 
   useEffect(() => {
     const adminViews = adminNav.map((item) => item.id);
     const clientViews = clientNav.map((item) => item.id);
 
-    if (role === "Administrador" && !adminViews.includes(activeView as AdminView)) {
+    if (isAdminRole(displayRole) && !adminViews.includes(activeView as AdminView)) {
       setActiveView("panel");
     }
 
-    if (role === "Cliente" && !clientViews.includes(activeView as ClientView)) {
+    if (displayRole === "Cliente" && !clientViews.includes(activeView as ClientView)) {
       setActiveView("portal");
     }
   }, [activeView, role, setActiveView]);
@@ -1133,7 +1240,7 @@ export default function App() {
       setInvoiceCustomerId(customers[0].id);
     }
 
-    if (!customers.some((customer) => customer.id === activeClientId) && customers[0]) {
+    if (activeClientId && !customers.some((customer) => customer.id === activeClientId) && customers[0]) {
       setActiveClientId(customers[0].id);
     }
   }, [activeClientId, customers, invoiceCustomerId]);
@@ -1150,6 +1257,13 @@ export default function App() {
     }
   }, [activeInvoiceId, invoices]);
 
+  useEffect(() => {
+    if (sessionUser && !activeClientId) {
+      const match = customers.find((c) => c.email === sessionUser);
+      if (match) setActiveClientId(match.id);
+    }
+  }, [sessionUser, customers, activeClientId]);
+
   const visibleInventory = useMemo(() => {
     return inventory.filter((item) => {
       const matchesCategory = inventoryCategory === "Todas" || item.category === inventoryCategory;
@@ -1160,13 +1274,26 @@ export default function App() {
   }, [inventory, inventoryCategory, inventoryQuery]);
 
   const lowStockItems = useMemo(() => inventory.filter((item) => item.status !== "Servicio" && item.stock <= item.minStock), [inventory]);
-  const activeClient = customers.find((customer) => customer.id === activeClientId) ?? customers[0];
+  const activeClient = customers.find((customer) => customer.id === activeClientId) ?? null;
   const selectedCustomer = customers.find((customer) => customer.id === invoiceCustomerId) ?? null;
   const selectedInvoice = invoices.find((invoice) => invoice.id === activeInvoiceId) ?? invoices[0];
   const clientInvoices = useMemo(() => invoices.filter((invoice) => invoice.customerId === activeClient?.id), [activeClient?.id, invoices]);
   const clientAppointments = useMemo(() => appointments.filter((appointment) => appointment.customerId === activeClient?.id), [activeClient?.id, appointments]);
   const draftTotals = useMemo(() => invoiceTotals(draftLines), [draftLines]);
   const selectedInvoiceTotals = selectedInvoice ? invoiceTotals(selectedInvoice.lines) : { subtotal: 0, tax: 0, total: 0 };
+  const visiblePurchases = useMemo(() => {
+    return purchases.filter((p) => {
+      const matchesStatus = purchaseStatusFilter === "Todas" || p.status === purchaseStatusFilter;
+      const term = purchaseQuery.trim().toLowerCase();
+      const matchesTerm = !term || `${p.supplier} ${p.ruc} ${p.id}`.toLowerCase().includes(term);
+      return matchesStatus && matchesTerm;
+    });
+  }, [purchases, purchaseQuery, purchaseStatusFilter]);
+  const visibleInvoices = useMemo(() => {
+    const term = invoiceQuery.trim().toLowerCase();
+    if (!term) return invoices;
+    return invoices.filter((inv) => `${inv.id} ${inv.customer} ${inv.document}`.toLowerCase().includes(term));
+  }, [invoices, invoiceQuery]);
   const inventoryValue = inventory.reduce((sum, item) => (item.status === "Servicio" ? sum : sum + item.stock * item.cost), 0);
   const salesTax = invoices.reduce((sum, invoice) => (invoice.status === "Borrador" ? sum : sum + invoiceTotals(invoice.lines).tax), 0);
   const purchaseTax = purchases.reduce((sum, purchase) => (purchase.status === "Pendiente" ? sum : sum + purchase.tax), 0);
@@ -1207,7 +1334,8 @@ export default function App() {
   const purchaseExpenses = purchases.reduce((sum, p) => sum + p.total, 0);
   const totalExpenses = serviceExpenses + purchaseExpenses;
   const netIncome = salesTotal - totalExpenses;
-  const currentNav = role === "Administrador" ? adminNav : clientNav;
+  const displayRole: Role = isMobile ? "Cliente" : role;
+  const currentNav = isAdminRole(displayRole) ? adminNav : clientNav;
 
   const generateExamPDF = useCallback((exam: ExamResult) => {
     const customer = customers.find(c => c.id === exam.customerId);
@@ -1326,7 +1454,7 @@ export default function App() {
     pdf.save(`examen-visual-${exam.id}.pdf`);
   }, [customers]);
 
-  async function registerAuthUser(email: string, password: string) {
+  async function registerAuthUser(email: string, password: string, registerRole: Role = "Super Admin") {
     const error = validateAuthCredentials(email, password);
 
     if (error) {
@@ -1337,7 +1465,7 @@ export default function App() {
 
     try {
       const { error: signUpError } = await supabase.auth.signUp({ email: normalizedEmail, password });
-      if (signUpError && !signUpError.message.includes("already") && !signUpError.message.includes("anon")) {
+      if (signUpError && !signUpError.message.includes("already") && !signUpError.message.includes("anon") && !signUpError.message.includes("Invalid API key")) {
         return `Error al crear usuario: ${signUpError.message}`;
       }
     } catch {
@@ -1348,8 +1476,13 @@ export default function App() {
     console.log("registerAuthUser: setting state", nextUser.email);
     setRegisteredUser(nextUser);
     setSessionUser(nextUser.email);
-    setRole("Administrador");
-    setActiveView("panel");
+    setRole(registerRole);
+    setActiveView(isAdminRole(registerRole) ? "panel" : "portal");
+
+    if (registerRole === "Cliente") {
+      const name = normalizedEmail.split("@")[0].replace(/[^a-zA-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim() || "Cliente nuevo";
+      setCustomers((items) => [{ id: `CLI-${String(items.length + 1).padStart(3, "0")}`, name, document: "", dv: "00", email: normalizedEmail, phone: "", address: "", prescription: "Pendiente de examen.", lastVisit: todayDate(), balance: 0, status: "Activo" }, ...items]);
+    }
     sendRegistrationEmail(nextUser.email);
     return "";
   }
@@ -1403,8 +1536,14 @@ export default function App() {
 
         if (code) {
           setDetectedSku(code);
-          setScannerForm((form) => ({ ...form, sku: code, name: form.name || `Producto ${code.slice(-6)}` }));
-          setScannerStatus(`Codigo detectado: ${code}. Completa los datos y registra la mercancia.`);
+          const existing = inventory.find((item) => item.sku.toLowerCase() === code.toLowerCase());
+          if (existing) {
+            setScannerStatus(`Producto existente: ${existing.name} (SKU: ${code}). Se agregaran unidades al stock actual (${existing.stock}).`);
+            setNewInventoryItem((form) => ({ ...form, sku: code, name: existing.name, stock: "1", cost: String(existing.cost), price: String(existing.price), category: existing.category, supplier: existing.supplier, location: existing.location }));
+          } else {
+            setNewInventoryItem((form) => ({ ...form, sku: code, name: form.name || `Producto ${code.slice(-6)}` }));
+            setScannerStatus(`Codigo detectado: ${code}. Completa los datos y registra el producto.`);
+          }
           stopScanner();
           return;
         }
@@ -1423,85 +1562,16 @@ export default function App() {
     setDetectedSku("");
     setScannerStatus("Reiniciando camara...");
     setScannerOpen(false);
-    window.setTimeout(() => setScannerOpen(true), 80);
+    window.setTimeout(() => startScanner(), 80);
   }
 
-  function registerScannedMerchandise(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const sku = (scannerForm.sku || detectedSku).trim();
-    const qty = Number(scannerForm.stock);
-    const minStock = Number(scannerForm.minStock);
-    const price = Number(scannerForm.price);
-    const formCost = Number(scannerForm.cost);
-    const existingItem = inventory.find((item) => item.sku.toLowerCase() === sku.toLowerCase());
 
-    if (!sku || Number.isNaN(qty) || qty <= 0 || Number.isNaN(minStock) || Number.isNaN(price)) {
-      setScannerStatus("Completa SKU, cantidad, minimo y precio para registrar la mercancia.");
-      return;
-    }
-
-    if (!existingItem && !scannerForm.name.trim()) {
-      setScannerStatus("Escribe el nombre del producto para crear un nuevo registro.");
-      return;
-    }
-
-    if (existingItem) {
-      setInventory((items) =>
-        items.map((item) => {
-          if (item.id !== existingItem.id) {
-            return item;
-          }
-
-          const nextStock = item.stock + qty;
-          return { ...item, stock: nextStock, status: item.status === "Servicio" ? "Servicio" : nextStock <= item.minStock ? "Bajo stock" : "Activo" };
-        }),
-      );
-      setScannerStatus(`Stock actualizado para ${existingItem.name}: +${qty} unidades.`);
-    } else {
-      const nextId = `INV-${String(inventory.length + 1).padStart(3, "0")}`;
-      const cost = !Number.isNaN(formCost) && formCost > 0 ? formCost : price * 0.45;
-      setInventory((items) => [
-        {
-          id: nextId,
-          sku,
-          name: scannerForm.name.trim(),
-          category: scannerForm.category,
-          supplier: scannerForm.supplier.trim() || "Proveedor por asignar",
-          stock: qty,
-          minStock,
-          cost,
-          price,
-          taxRate: scannerForm.category === "Servicios clinicos" ? 0 : PANAMA_TAX_RATE,
-          location: scannerForm.location.trim() || "Deposito",
-          status: scannerForm.category === "Servicios clinicos" ? "Servicio" : qty <= minStock ? "Bajo stock" : "Activo",
-        },
-        ...items,
-      ]);
-      setScannerStatus(`Mercancia registrada con SKU ${sku}.`);
-    }
-
-    setInventoryQuery(sku);
-    setScannerForm((form) => ({ ...form, sku: "", name: "", stock: "1" }));
-    setDetectedSku("");
-  }
 
   function switchRole(nextRole: Role) {
     setRole(nextRole);
-    setActiveView(nextRole === "Administrador" ? "panel" : "portal");
+    setActiveView(isAdminRole(nextRole) ? "panel" : "portal");
   }
 
-  function resetDemoData() {
-    setInventory(inventorySeed);
-    setPurchases(purchasesSeed);
-    setServicePayments(serviceSeed);
-    setCustomers(customersSeed);
-    setInvoices(invoicesSeed);
-    setAppointments(appointmentsSeed);
-    setUsers(usersSeed);
-    setDraftLines([]);
-    setActiveInvoiceId(invoicesSeed[0].id);
-    setActiveClientId(customersSeed[0].id);
-  }
 
   function updateStock(id: string, delta: number) {
     setInventory((items) =>
@@ -1522,34 +1592,53 @@ export default function App() {
 
   function addInventoryItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const sku = newInventoryItem.sku.trim();
     const stock = Number(newInventoryItem.stock);
     const minStock = Number(newInventoryItem.minStock);
     const price = Number(newInventoryItem.price);
     const cost = Number(newInventoryItem.cost) || Math.round(price * 0.45 * 100) / 100;
+    const existingItem = sku ? inventory.find((item) => item.sku.toLowerCase() === sku.toLowerCase()) : undefined;
 
-    if (!newInventoryItem.name.trim() || Number.isNaN(stock) || Number.isNaN(minStock) || Number.isNaN(price)) {
+    if (!sku || Number.isNaN(stock) || stock <= 0 || Number.isNaN(minStock) || Number.isNaN(price) || !newInventoryItem.name.trim()) {
       return;
     }
 
-    const nextId = `INV-${String(inventory.length + 1).padStart(3, "0")}`;
-    setInventory((items) => [
-      {
-        id: nextId,
-        sku: newInventoryItem.sku.trim() || `${newInventoryItem.category.slice(0, 3).toUpperCase()}-${String(Date.now()).slice(-4)}`,
-        name: newInventoryItem.name.trim(),
-        category: newInventoryItem.category,
-        supplier: newInventoryItem.supplier.trim() || "Proveedor por asignar",
-        stock,
-        minStock,
-        cost,
-        price,
-        taxRate: newInventoryItem.category === "Servicios clinicos" ? 0 : PANAMA_TAX_RATE,
-        location: newInventoryItem.category === "Servicios clinicos" ? "Consultorio" : "Deposito",
-        status: newInventoryItem.category === "Servicios clinicos" ? "Servicio" : stock <= minStock ? "Bajo stock" : "Activo",
-      },
-      ...items,
-    ]);
-    setNewInventoryItem({ name: "", category: "Monturas", stock: "6", minStock: "3", price: "45" });
+    const category = newInventoryItem.category.trim() || "General";
+    const supplier = newInventoryItem.supplier.trim() || "Proveedor por asignar";
+    const location = newInventoryItem.location.trim() || "Deposito";
+
+    if (existingItem) {
+      setInventory((items) =>
+        items.map((item) => {
+          if (item.id !== existingItem.id) return item;
+          const nextStock = item.stock + stock;
+          return { ...item, stock: nextStock, status: item.status === "Servicio" ? "Servicio" : nextStock <= item.minStock ? "Bajo stock" : "Activo" };
+        }),
+      );
+    } else {
+      const nextId = `INV-${String(inventory.length + 1).padStart(3, "0")}`;
+      const isService = category.toLowerCase().includes("servicio");
+      setInventory((items) => [
+        {
+          id: nextId,
+          sku,
+          name: newInventoryItem.name.trim(),
+          category,
+          supplier,
+          stock,
+          minStock,
+          cost,
+          price,
+          taxRate: isService ? 0 : PANAMA_TAX_RATE,
+          location,
+          status: isService ? "Servicio" : stock <= minStock ? "Bajo stock" : "Activo",
+        },
+        ...items,
+      ]);
+    }
+
+    setInventoryQuery(sku);
+    setNewInventoryItem({ name: "", category: "", sku: "", stock: "1", minStock: "3", cost: "", price: "", supplier: "", location: "" });
   }
 
   function addInvoiceLine() {
@@ -1678,37 +1767,79 @@ export default function App() {
     setInvoices((items) => items.map((invoice) => (invoice.id === id ? { ...invoice, status: "Pagada" } : invoice)));
   }
 
+  function addPurchaseLine() {
+    const description = purchaseLineForm.description.trim();
+    const qty = Number(purchaseLineForm.qty);
+    const unitPrice = Number(purchaseLineForm.unitPrice);
+    if (!description || Number.isNaN(qty) || qty < 1 || Number.isNaN(unitPrice) || unitPrice < 0) return;
+    setPurchaseLines((prev) => [...prev, { description, qty, unitPrice }]);
+    setPurchaseLineForm({ description: "", qty: "1", unitPrice: "0" });
+  }
+
+  function removePurchaseLine(index: number) {
+    setPurchaseLines((prev) => prev.filter((_, i) => i !== index));
+  }
+
   function addPurchase(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const subtotal = Number(purchaseForm.subtotal);
-    const items = Number(purchaseForm.items);
+    if (!purchaseForm.supplier.trim() || purchaseLines.length === 0) return;
 
-    if (!purchaseForm.supplier.trim() || Number.isNaN(subtotal) || Number.isNaN(items)) {
-      return;
-    }
-
+    const subtotal = purchaseLines.reduce((sum, line) => sum + line.qty * line.unitPrice, 0);
     const tax = subtotal * PANAMA_TAX_RATE;
-    setPurchases((orders) => [
-      {
-        id: `OC-${String(orders.length + 11).padStart(4, "0")}`,
-        supplier: purchaseForm.supplier.trim(),
-        ruc: purchaseForm.ruc || "Proveedor sin RUC",
-        dv: purchaseForm.dv || "00",
-        date: todayDate(),
-        dueDate: "2026-06-30",
-        status: "Pendiente",
-        items,
-        subtotal,
-        tax,
-        total: subtotal + tax,
-      },
-      ...orders,
-    ]);
-    setPurchaseForm({ supplier: "", ruc: "", dv: "", items: "1", subtotal: "100" });
+
+    if (editingPurchaseId) {
+      setPurchases((orders) =>
+        orders.map((order) =>
+          order.id === editingPurchaseId
+            ? { ...order, supplier: purchaseForm.supplier.trim(), ruc: purchaseForm.ruc || "Proveedor sin RUC", dv: purchaseForm.dv || "00", lines: [...purchaseLines], subtotal, tax, total: subtotal + tax }
+            : order
+        )
+      );
+      setEditingPurchaseId(null);
+    } else {
+      setPurchases((orders) => [
+        {
+          id: `OC-${String(orders.length + 11).padStart(4, "0")}`,
+          supplier: purchaseForm.supplier.trim(),
+          ruc: purchaseForm.ruc || "Proveedor sin RUC",
+          dv: purchaseForm.dv || "00",
+          date: todayDate(),
+          dueDate: "2026-06-30",
+          status: "Pendiente",
+          lines: [...purchaseLines],
+          subtotal,
+          tax,
+          total: subtotal + tax,
+        },
+        ...orders,
+      ]);
+    }
+    setPurchaseForm({ supplier: "", ruc: "", dv: "" });
+    setPurchaseLines([]);
+    setPurchaseLineForm({ description: "", qty: "1", unitPrice: "0" });
   }
 
   function updatePurchaseStatus(id: string, status: PurchaseOrder["status"]) {
     setPurchases((orders) => orders.map((order) => (order.id === id ? { ...order, status } : order)));
+  }
+
+  function deletePurchase(id: string) {
+    if (!window.confirm("Eliminar esta orden de compra?")) return;
+    setPurchases((orders) => orders.filter((order) => order.id !== id));
+  }
+
+  function startEditPurchase(purchase: PurchaseOrder) {
+    setEditingPurchaseId(purchase.id);
+    setPurchaseForm({ supplier: purchase.supplier, ruc: purchase.ruc, dv: purchase.dv });
+    setPurchaseLines([...purchase.lines]);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function cancelEditPurchase() {
+    setEditingPurchaseId(null);
+    setPurchaseForm({ supplier: "", ruc: "", dv: "" });
+    setPurchaseLines([]);
+    setPurchaseLineForm({ description: "", qty: "1", unitPrice: "0" });
   }
 
   function addServicePayment(event: FormEvent<HTMLFormElement>) {
@@ -1767,6 +1898,198 @@ export default function App() {
     setCustomerForm({ name: "", document: "", dv: "", email: "", phone: "", address: "", prescription: "" });
   }
 
+  async function clearAllData() {
+    if (!window.confirm("Eliminar TODOS los datos de inventario, compras, facturas, clientes, pagos y citas? Esta accion no se puede deshacer.")) return;
+    setInventory([]);
+    setPurchases([]);
+    setInvoices([]);
+    setCustomers([]);
+    setServicePayments([]);
+    setAppointments([]);
+    setUsers([]);
+    setExamResults([]);
+    localStorage.removeItem("sop-inventory");
+    localStorage.removeItem("sop-purchases");
+    localStorage.removeItem("sop-invoices");
+    localStorage.removeItem("sop-customers");
+    localStorage.removeItem("sop-service-payments");
+    localStorage.removeItem("sop-appointments");
+    localStorage.removeItem("sop-users");
+    localStorage.removeItem("sop-exams");
+    try {
+      await Promise.allSettled([
+        supabase.from("inventory_items").delete().neq("id", ""),
+        supabase.from("purchase_orders").delete().neq("id", ""),
+        supabase.from("invoices").delete().neq("id", ""),
+        supabase.from("customers").delete().neq("id", ""),
+        supabase.from("service_payments").delete().neq("id", ""),
+        supabase.from("appointments").delete().neq("id", ""),
+        supabase.from("user_accounts").delete().neq("id", ""),
+        supabase.from("exam_results").delete().neq("id", ""),
+      ]);
+    } catch { /* silent */ }
+  }
+
+  function downloadFile(content: string, filename: string, mime: string) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function exportAllPurchasesCSV() {
+    const header = "ID,Proveedor,RUC,DV,Fecha,Estado,Subtotal,ITBMS,Total";
+    const rows = purchases.map((p) =>
+      [p.id, p.supplier, p.ruc, p.dv, p.date, p.status, p.subtotal.toFixed(2), p.tax.toFixed(2), p.total.toFixed(2)].join(",")
+    );
+    downloadFile([header, ...rows].join("\n"), `compras-${todayDate()}.csv`, "text/csv;charset=utf-8;");
+  }
+
+  function exportPurchasePDF(purchase: PurchaseOrder) {
+    const pdf = new jsPDF({ unit: "mm", format: "a4" });
+    const pageW = 210;
+    const margin = 20;
+    let y = 25;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.text(purchase.id, pageW / 2, y, { align: "center" });
+    y += 8;
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Proveedor: ${purchase.supplier}`, margin, y);
+    y += 6;
+    pdf.text(`RUC: ${purchase.ruc}  DV: ${purchase.dv}`, margin, y);
+    y += 6;
+    pdf.text(`Fecha: ${formatDate(purchase.date)}  Vence: ${formatDate(purchase.dueDate)}`, margin, y);
+    y += 6;
+    pdf.text(`Estado: ${purchase.status}`, margin, y);
+    y += 10;
+
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, y, pageW - margin, y);
+    y += 7;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    const colW = [80, 30, 30, 30];
+    const cols = [margin, margin + colW[0], margin + colW[0] + colW[1], margin + colW[0] + colW[1] + colW[2]];
+    pdf.text("Descripcion", cols[0], y);
+    pdf.text("Cant.", cols[1], y);
+    pdf.text("P. Unit.", cols[2], y);
+    pdf.text("Subtotal", cols[3], y);
+    y += 5;
+    pdf.line(margin, y, pageW - margin, y);
+    y += 5;
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    for (const line of purchase.lines) {
+      pdf.text(line.description, cols[0], y);
+      pdf.text(String(line.qty), cols[1], y);
+      pdf.text(formatMoney(line.unitPrice), cols[2], y);
+      pdf.text(formatMoney(line.qty * line.unitPrice), cols[3], y);
+      y += 5;
+    }
+    y += 5;
+    pdf.line(margin, y, pageW - margin, y);
+    y += 7;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(10);
+    pdf.text(`Subtotal: ${formatMoney(purchase.subtotal)}`, pageW - margin, y, { align: "right" });
+    y += 6;
+    pdf.text(`ITBMS (7%): ${formatMoney(purchase.tax)}`, pageW - margin, y, { align: "right" });
+    y += 6;
+    pdf.setFontSize(12);
+    pdf.text(`Total: ${formatMoney(purchase.total)}`, pageW - margin, y, { align: "right" });
+
+    pdf.save(`${purchase.id}-${purchase.supplier}.pdf`);
+  }
+
+  function exportInvoicePDF(invoice: Invoice) {
+    const totals = invoiceTotals(invoice.lines);
+    const pdf = new jsPDF({ unit: "mm", format: "a4" });
+    const pageW = 210;
+    const margin = 20;
+    let y = 25;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.text(invoice.id, pageW / 2, y, { align: "center" });
+    y += 8;
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Cliente: ${invoice.customer}`, margin, y);
+    y += 6;
+    pdf.text(`Documento: ${invoice.document}`, margin, y);
+    y += 6;
+    pdf.text(`Fecha: ${formatDate(invoice.date)}  Pago: ${invoice.payment}`, margin, y);
+    y += 6;
+    pdf.text(`Estado: ${invoice.status}`, margin, y);
+    y += 10;
+
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, y, pageW - margin, y);
+    y += 7;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    const colW = [80, 20, 25, 25, 25];
+    const cols = [margin, margin + colW[0], margin + colW[0] + colW[1], margin + colW[0] + colW[1] + colW[2], margin + colW[0] + colW[1] + colW[2] + colW[3]];
+    pdf.text("Descripcion", cols[0], y);
+    pdf.text("Cant.", cols[1], y);
+    pdf.text("P. Unit.", cols[2], y);
+    pdf.text("ITBMS", cols[3], y);
+    pdf.text("Total", cols[4], y);
+    y += 5;
+    pdf.line(margin, y, pageW - margin, y);
+    y += 5;
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    for (const line of invoice.lines) {
+      const sub = lineSubtotal(line);
+      const tax = lineTax(line);
+      pdf.text(line.description, cols[0], y);
+      pdf.text(String(line.qty), cols[1], y);
+      pdf.text(formatMoney(line.unitPrice), cols[2], y);
+      pdf.text(formatMoney(tax), cols[3], y);
+      pdf.text(formatMoney(sub + tax), cols[4], y);
+      y += 5;
+    }
+    y += 5;
+    pdf.line(margin, y, pageW - margin, y);
+    y += 7;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(10);
+    pdf.text(`Subtotal: ${formatMoney(totals.subtotal)}`, pageW - margin, y, { align: "right" });
+    y += 6;
+    pdf.text(`ITBMS: ${formatMoney(totals.tax)}`, pageW - margin, y, { align: "right" });
+    y += 6;
+    pdf.setFontSize(12);
+    pdf.text(`Total: ${formatMoney(totals.total)}`, pageW - margin, y, { align: "right" });
+
+    pdf.save(`${invoice.id}-${invoice.customer}.pdf`);
+  }
+
+  function exportInvoicesCSV() {
+    const header = "ID,Cliente,Documento,Fecha,Pago,Estado,Subtotal,ITBMS,Total";
+    const rows = visibleInvoices.map((inv) => {
+      const t = invoiceTotals(inv.lines);
+      return [inv.id, inv.customer, inv.document, inv.date, inv.payment, inv.status, t.subtotal.toFixed(2), t.tax.toFixed(2), t.total.toFixed(2)].join(",");
+    });
+    downloadFile([header, ...rows].join("\n"), `facturas-${todayDate()}.csv`, "text/csv;charset=utf-8;");
+  }
+
   function requestAppointment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -1779,12 +2102,13 @@ export default function App() {
         id: `CT-${String(items.length + 17).padStart(3, "0")}`,
         customerId: activeClient.id,
         date: appointmentForm.date,
+        time: appointmentForm.time,
         reason: appointmentForm.reason.trim(),
         status: "Solicitada",
       },
       ...items,
     ]);
-    setAppointmentForm({ date: "2026-06-21", reason: "Examen visual" });
+    setAppointmentForm({ date: "2026-06-21", time: "10:00", reason: "Examen visual" });
   }
 
   if (!sessionUser) {
@@ -1886,7 +2210,7 @@ export default function App() {
         subtitle="Controla monturas, lentes oftalmicos, lentes de contacto, accesorios y servicios clinicos con minimos, costos, precios e ITBMS por item."
         action={
           <div className="flex flex-wrap gap-2">
-            <button className="rounded-full bg-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-cyan-600/20" onClick={() => setScannerOpen(true)}>
+            <button className="rounded-full bg-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-cyan-600/20" onClick={startScanner}>
               Escanear con camara
             </button>
           </div>
@@ -1894,133 +2218,90 @@ export default function App() {
       />
 
       {scannerOpen && (
-        <section className="reveal-up grid gap-6 rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl shadow-slate-950/20 lg:grid-cols-[0.95fr_1.05fr] lg:p-6">
-          <div>
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-black ring-1 ring-white/10">
-              <video ref={videoRef} className="h-full w-full object-cover" playsInline muted autoPlay />
-              <div className="pointer-events-none absolute inset-8 rounded-3xl border-2 border-cyan-300/80" />
-              <div className="scanner-line pointer-events-none absolute left-10 right-10 top-1/2 h-0.5 bg-cyan-300 shadow-[0_0_22px_rgba(103,232,249,0.9)]" />
+        <section className="reveal-up rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl shadow-slate-950/20">
+          <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-start">
+            <div>
+              <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-black ring-1 ring-white/10">
+                <video ref={videoRef} className="h-full w-full object-cover" playsInline muted autoPlay />
+                <div className="pointer-events-none absolute inset-8 rounded-3xl border-2 border-cyan-300/80" />
+                <div className="scanner-line pointer-events-none absolute left-10 right-10 top-1/2 h-0.5 bg-cyan-300 shadow-[0_0_22px_rgba(103,232,249,0.9)]" />
+              </div>
+              <div className="mt-4 rounded-3xl bg-white/10 p-4 text-sm leading-6 text-slate-200">
+                <p className="font-black text-white">{detectedSku ? `SKU detectado: ${detectedSku}` : "Escaner de mercancia"}</p>
+                <p className="mt-1">{scannerStatus}</p>
+                <p className="mt-2 text-xs text-slate-300">En celular usa HTTPS o localhost para habilitar la camara. Si el navegador no lee el codigo, escribe el SKU manualmente en el formulario.</p>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-950" onClick={restartScanner}>
+                  Reintentar lectura
+                </button>
+                <button type="button" className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white ring-1 ring-white/15" onClick={() => setScannerOpen(false)}>
+                  Cerrar camara
+                </button>
+              </div>
             </div>
-            <div className="mt-4 rounded-3xl bg-white/10 p-4 text-sm leading-6 text-slate-200">
-              <p className="font-black text-white">{detectedSku ? `SKU detectado: ${detectedSku}` : "Escaner de mercancia"}</p>
-              <p className="mt-1">{scannerStatus}</p>
-              <p className="mt-2 text-xs text-slate-300">En celular usa HTTPS o localhost para habilitar la camara. Si el navegador no lee el codigo, puedes escribir el SKU manualmente.</p>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-950" onClick={restartScanner}>
-                Reintentar lectura
-              </button>
-              <button type="button" className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white ring-1 ring-white/15" onClick={() => setScannerOpen(false)}>
-                Cerrar camara
-              </button>
+            <div className="rounded-[1.5rem] bg-white/10 p-5 text-sm leading-6 text-slate-200">
+              <p className="font-black text-white">Datos del escaneo</p>
+              <p className="mt-2">{detectedSku ? `SKU: ${detectedSku} — los datos se han rellenado automaticamente en el formulario de abajo.` : "Apunta la camara a un codigo de barras o QR para auto-rellenar el formulario."}</p>
             </div>
           </div>
-
-          <form className="rounded-[1.5rem] bg-white p-5 text-slate-950" onSubmit={registerScannedMerchandise}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-700">Entrada por camara</p>
-                <h3 className="mt-2 text-2xl font-black tracking-tight">Registrar mercancia</h3>
-              </div>
-              <StatusBadge status={detectedSku ? "Activo" : "Pendiente"} />
-            </div>
-
-            <div className="mt-5 grid gap-4">
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                SKU / codigo detectado
-                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={scannerForm.sku} onChange={(event) => setScannerForm((form) => ({ ...form, sku: event.target.value }))} placeholder="Codigo de barras o QR" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Nombre del producto
-                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={scannerForm.name} onChange={(event) => setScannerForm((form) => ({ ...form, name: event.target.value }))} placeholder="Ej. Montura rectangular negra" />
-              </label>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-2 text-sm font-bold text-slate-700">
-                  Categoria
-                  <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={scannerForm.category} onChange={(event) => setScannerForm((form) => ({ ...form, category: event.target.value }))}>
-                    {categories.filter((category) => category !== "Todas").map((category) => <option key={category}>{category}</option>)}
-                  </select>
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-slate-700">
-                  Proveedor
-                  <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={scannerForm.supplier} onChange={(event) => setScannerForm((form) => ({ ...form, supplier: event.target.value }))} />
-                </label>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-4">
-                <label className="grid gap-2 text-sm font-bold text-slate-700">
-                  Cantidad
-                  <input type="number" min="1" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={scannerForm.stock} onChange={(event) => setScannerForm((form) => ({ ...form, stock: event.target.value }))} />
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-slate-700">
-                  Minimo
-                  <input type="number" min="0" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={scannerForm.minStock} onChange={(event) => setScannerForm((form) => ({ ...form, minStock: event.target.value }))} />
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-slate-700">
-                  Costo
-                  <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={scannerForm.cost} onChange={(event) => setScannerForm((form) => ({ ...form, cost: event.target.value }))} />
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-slate-700">
-                  Precio
-                  <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={scannerForm.price} onChange={(event) => setScannerForm((form) => ({ ...form, price: event.target.value }))} />
-                </label>
-            </div>
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Ubicacion
-                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={scannerForm.location} onChange={(event) => setScannerForm((form) => ({ ...form, location: event.target.value }))} />
-              </label>
-              <button className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20">Registrar mercancia escaneada</button>
-            </div>
-          </form>
         </section>
       )}
 
-      <section className="grid gap-6 xl:grid-cols-[0.75fr_1.25fr]">
+      <section className="grid gap-6 lg:grid-cols-[0.7fr_1.3fr]">
         <form className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80" onSubmit={addInventoryItem}>
           <h3 className="text-xl font-black text-slate-950">Registrar producto</h3>
-          <div className="mt-5 grid gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Nombre
-                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.name} onChange={(event) => setNewInventoryItem((item) => ({ ...item, name: event.target.value }))} placeholder="Ej. Montura infantil" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                SKU
-                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.sku} onChange={(event) => setNewInventoryItem((item) => ({ ...item, sku: event.target.value }))} placeholder="Ej. MON-001" />
-              </label>
+          <p className="mt-1 text-sm text-slate-500">Usa el escaner o completa los campos manualmente. Si el SKU ya existe se agregara stock automaticamente.</p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Nombre del producto
+              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.name} onChange={(event) => setNewInventoryItem((item) => ({ ...item, name: event.target.value }))} placeholder="Ej. Montura infantil" />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              SKU / codigo de barras
+              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.sku} onChange={(event) => setNewInventoryItem((item) => ({ ...item, sku: event.target.value }))} placeholder="Ej. MON-001 o codigo de barras" />
+            </label>
+            <div className="grid gap-2">
+              <label className="text-sm font-bold text-slate-700">Categoria</label>
+              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.category} onChange={(event) => setNewInventoryItem((item) => ({ ...item, category: event.target.value }))} placeholder="Nueva categoria" />
+              {[...new Set(inventory.map((i) => i.category))].filter(Boolean).length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="text-xs text-slate-400">Existentes:</span>
+                  {[...new Set(inventory.map((i) => i.category))].filter(Boolean).map((cat) => (
+                    <button key={cat} type="button" className="text-xs font-semibold text-cyan-700 underline underline-offset-2 hover:text-cyan-900" onClick={() => setNewInventoryItem((item) => ({ ...item, category: cat }))}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Categoria
-                <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.category} onChange={(event) => setNewInventoryItem((item) => ({ ...item, category: event.target.value }))}>
-                  {categories.filter((category) => category !== "Todas").map((category) => <option key={category}>{category}</option>)}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Proveedor
-                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.supplier} onChange={(event) => setNewInventoryItem((item) => ({ ...item, supplier: event.target.value }))} placeholder="Nombre del proveedor" />
-              </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Proveedor
+              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.supplier} onChange={(event) => setNewInventoryItem((item) => ({ ...item, supplier: event.target.value }))} placeholder="Nombre del proveedor" />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Stock / cantidad
+              <input type="number" min="1" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.stock} onChange={(event) => setNewInventoryItem((item) => ({ ...item, stock: event.target.value }))} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Stock minimo
+              <input type="number" min="0" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.minStock} onChange={(event) => setNewInventoryItem((item) => ({ ...item, minStock: event.target.value }))} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Ubicacion
+              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.location} onChange={(event) => setNewInventoryItem((item) => ({ ...item, location: event.target.value }))} placeholder="Ej. Vitrina A, Deposito" />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Precio de compra (costo)
+              <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.cost} onChange={(event) => setNewInventoryItem((item) => ({ ...item, cost: event.target.value }))} placeholder="B/. 0.00" />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Precio de venta
+              <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.price} onChange={(event) => setNewInventoryItem((item) => ({ ...item, price: event.target.value }))} placeholder="B/. 0.00" />
+            </label>
+            <div className="sm:col-span-2">
+              <button className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20">Guardar producto</button>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Stock
-                <input type="number" min="0" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.stock} onChange={(event) => setNewInventoryItem((item) => ({ ...item, stock: event.target.value }))} />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Minimo
-                <input type="number" min="0" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.minStock} onChange={(event) => setNewInventoryItem((item) => ({ ...item, minStock: event.target.value }))} />
-              </label>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Precio de venta
-                <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.price} onChange={(event) => setNewInventoryItem((item) => ({ ...item, price: event.target.value }))} placeholder="B/. 0.00" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Costo
-                <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.cost} onChange={(event) => setNewInventoryItem((item) => ({ ...item, cost: event.target.value }))} placeholder="B/. 0.00" />
-              </label>
-            </div>
-            <button className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20">Agregar al inventario</button>
           </div>
         </form>
 
@@ -2028,38 +2309,36 @@ export default function App() {
           <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
             <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={inventoryQuery} onChange={(event) => setInventoryQuery(event.target.value)} placeholder="Buscar por nombre, SKU o proveedor" />
             <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={inventoryCategory} onChange={(event) => setInventoryCategory(event.target.value)}>
-              {categories.map((category) => <option key={category}>{category}</option>)}
+              {["Todas", ...new Set(inventory.map((item) => item.category))].map((category) => <option key={category}>{category}</option>)}
             </select>
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-[1.5rem] border border-slate-200">
-            <div className="hidden grid-cols-[1fr_90px_90px_75px_120px] bg-slate-950 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-white md:grid">
-              <span>Producto</span>
-              <span>Stock</span>
-              <span>Min.</span>
-              <span>Precio</span>
-              <span>Accion</span>
-            </div>
-            <div className="divide-y divide-slate-200 bg-white">
-              {visibleInventory.map((item) => (
-                <div key={item.id} className="grid gap-4 px-5 py-4 md:grid-cols-[1fr_90px_90px_75px_120px] md:items-center">
-                  <div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {visibleInventory.map((item) => (
+              <div key={item.id} className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-black text-slate-950">{item.name}</p>
+                      <p className="text-lg font-black text-slate-950">{item.name}</p>
                       <StatusBadge status={item.status} />
                     </div>
-                    <p className="mt-1 text-sm text-slate-500">{item.sku} · {item.category} · {item.supplier} · {item.location}</p>
+                    <p className="mt-1 text-sm text-slate-400">{item.category}{item.location ? ` · ${item.location}` : ""}</p>
                   </div>
-                  <p className="text-lg font-black text-slate-950">{item.stock}</p>
-                  <p className="text-sm font-bold text-slate-600">{item.minStock}</p>
-                  <p className="font-black text-slate-950">{formatMoney(item.price)}</p>
-                  <div className="flex gap-2">
-                    <button className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 font-black text-slate-900" onClick={() => updateStock(item.id, -1)} aria-label={`Reducir ${item.name}`}>-</button>
-                    <button className="grid h-10 w-10 place-items-center rounded-full bg-cyan-600 font-black text-white" onClick={() => updateStock(item.id, 1)} aria-label={`Aumentar ${item.name}`}>+</button>
-                  </div>
+                  <p className="text-2xl font-black text-slate-950">{formatMoney(item.price)}</p>
                 </div>
-              ))}
-            </div>
+                <div className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                  <div><span className="font-semibold text-slate-500">SKU:</span> <span className="text-slate-700">{item.sku}</span></div>
+                  <div><span className="font-semibold text-slate-500">Proveedor:</span> <span className="text-slate-700">{item.supplier}</span></div>
+                  <div><span className="font-semibold text-slate-500">Stock:</span> <span className="font-black text-slate-950">{item.stock}</span> <span className="text-slate-400">/ min {item.minStock}</span></div>
+                  <div><span className="font-semibold text-slate-500">Costo:</span> <span className="text-slate-700">{formatMoney(item.cost)}</span></div>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 font-black text-slate-900" onClick={() => updateStock(item.id, -1)}>-</button>
+                  <button className="grid h-9 w-9 place-items-center rounded-full bg-cyan-600 font-black text-white" onClick={() => updateStock(item.id, 1)}>+</button>
+                </div>
+              </div>
+            ))}
+            {visibleInventory.length === 0 && <p className="text-sm text-slate-400">No hay productos en el inventario.</p>}
           </div>
         </div>
       </section>
@@ -2071,13 +2350,16 @@ export default function App() {
       <SectionTitle title="Compras a proveedores" subtitle="Ordenes de compra con RUC/DV del proveedor, ITBMS pagado y estado para calcular credito fiscal del Formulario 430." />
       <section className="grid gap-6 xl:grid-cols-[0.75fr_1.25fr]">
         <form className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80" onSubmit={addPurchase}>
-          <h3 className="text-xl font-black text-slate-950">Nueva compra</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-black text-slate-950">{editingPurchaseId ? "Editar compra" : "Nueva compra"}</h3>
+            {editingPurchaseId && <button type="button" className="text-sm font-bold text-rose-600" onClick={cancelEditPurchase}>Cancelar</button>}
+          </div>
           <div className="mt-5 grid gap-4">
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               Proveedor
               <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={purchaseForm.supplier} onChange={(event) => setPurchaseForm((form) => ({ ...form, supplier: event.target.value }))} placeholder="Laboratorio o distribuidor" />
             </label>
-            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+            <div className="grid gap-4 sm:grid-cols-[1fr_80px]">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 RUC
                 <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={purchaseForm.ruc} onChange={(event) => setPurchaseForm((form) => ({ ...form, ruc: event.target.value }))} placeholder="RUC proveedor" />
@@ -2087,17 +2369,34 @@ export default function App() {
                 <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={purchaseForm.dv} onChange={(event) => setPurchaseForm((form) => ({ ...form, dv: event.target.value }))} placeholder="00" />
               </label>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Items
-                <input type="number" min="1" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={purchaseForm.items} onChange={(event) => setPurchaseForm((form) => ({ ...form, items: event.target.value }))} />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Subtotal
-                <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={purchaseForm.subtotal} onChange={(event) => setPurchaseForm((form) => ({ ...form, subtotal: event.target.value }))} />
-              </label>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-3 text-sm font-bold text-slate-700">Lineas de compra</p>
+              {purchaseLines.length === 0 && <p className="text-sm text-slate-400">Agrega productos a la compra.</p>}
+              {purchaseLines.map((line, index) => (
+                <div key={index} className="mb-2 flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
+                  <span className="font-medium text-slate-700">{line.description}</span>
+                  <span className="text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
+                  <span className="font-bold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
+                  <button type="button" onClick={() => removePurchaseLine(index)} className="text-rose-500 hover:text-rose-700">&times;</button>
+                </div>
+              ))}
+              <div className="mt-3 grid grid-cols-[1fr_70px_100px_40px] gap-2">
+                <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-cyan-500" value={purchaseLineForm.description} onChange={(e) => setPurchaseLineForm((f) => ({ ...f, description: e.target.value }))} placeholder="Producto" />
+                <input type="number" min="1" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-cyan-500" value={purchaseLineForm.qty} onChange={(e) => setPurchaseLineForm((f) => ({ ...f, qty: e.target.value }))} placeholder="Cant." />
+                <input type="number" min="0" step="0.01" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-cyan-500" value={purchaseLineForm.unitPrice} onChange={(e) => setPurchaseLineForm((f) => ({ ...f, unitPrice: e.target.value }))} placeholder="Precio" />
+                <button type="button" onClick={addPurchaseLine} className="rounded-xl bg-cyan-600 text-sm font-black text-white">+</button>
+              </div>
             </div>
-            <button className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20">Registrar orden</button>
+
+            {purchaseLines.length > 0 && (
+              <div className="flex justify-between rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white">
+                <span>{purchaseLines.reduce((s, l) => s + l.qty, 0)} articulos</span>
+                <span>Subtotal {formatMoney(purchaseLines.reduce((s, l) => s + l.qty * l.unitPrice, 0))} · ITBMS {formatMoney(purchaseLines.reduce((s, l) => s + l.qty * l.unitPrice, 0) * PANAMA_TAX_RATE)} · Total {formatMoney(purchaseLines.reduce((s, l) => s + l.qty * l.unitPrice, 0) * (1 + PANAMA_TAX_RATE))}</span>
+              </div>
+            )}
+
+            <button disabled={purchaseLines.length === 0} className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20 disabled:opacity-40">{editingPurchaseId ? "Guardar cambios" : "Registrar orden"}</button>
           </div>
         </form>
 
@@ -2107,24 +2406,53 @@ export default function App() {
             <Metric label="Ordenes abiertas" value={String(purchases.filter((purchase) => purchase.status !== "Pagada").length)} caption="Pendientes de recibir o pagar." tone="amber" />
             <Metric label="Compras" value={formatMoney(purchases.reduce((sum, purchase) => sum + purchase.total, 0))} caption="Total historico demo." tone="slate" />
           </div>
-          {purchases.map((purchase) => (
+          <div className="grid gap-3 sm:grid-cols-[1fr_200px_auto]">
+            <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={purchaseQuery} onChange={(e) => setPurchaseQuery(e.target.value)} placeholder="Buscar por proveedor, RUC o ID" />
+            <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={purchaseStatusFilter} onChange={(e) => setPurchaseStatusFilter(e.target.value)}>
+              {["Todas", "Pendiente", "Recibida", "Pagada"].map((s) => <option key={s}>{s}</option>)}
+            </select>
+            <button className="rounded-2xl bg-cyan-100 px-4 py-3 font-bold text-cyan-700" onClick={exportAllPurchasesCSV}>CSV</button>
+          </div>
+          {visiblePurchases.length === 0 && <p className="text-sm text-slate-400">No se encontraron ordenes.</p>}
+          {visiblePurchases.map((purchase) => (
             <article key={purchase.id} className="rounded-[2rem] bg-white/80 p-5 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-3">
                     <h3 className="text-lg font-black text-slate-950">{purchase.id} · {purchase.supplier}</h3>
                     <StatusBadge status={purchase.status} />
                   </div>
-                  <p className="mt-1 text-sm text-slate-500">RUC {purchase.ruc} DV {purchase.dv} · emitida {formatDate(purchase.date)} · vence {formatDate(purchase.dueDate)}</p>
+                  <div className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr_auto_1fr]">
+                    <span className="font-semibold text-slate-500">RUC:</span>
+                    <span className="text-slate-700">{purchase.ruc}</span>
+                    <span className="font-semibold text-slate-500">DV:</span>
+                    <span className="text-slate-700">{purchase.dv}</span>
+                    <span className="font-semibold text-slate-500">Emisión:</span>
+                    <span className="text-slate-700">{formatDate(purchase.date)}</span>
+                    <span className="font-semibold text-slate-500">Vence:</span>
+                    <span className="text-slate-700">{formatDate(purchase.dueDate)}</span>
+                  </div>
                 </div>
                 <div className="text-left md:text-right">
                   <p className="text-2xl font-black text-slate-950">{formatMoney(purchase.total)}</p>
                   <p className="text-sm text-slate-500">ITBMS {formatMoney(purchase.tax)}</p>
                 </div>
               </div>
+              <div className="mt-3 space-y-1 border-t border-slate-100 pt-3">
+                {(purchase.lines || []).map((line, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-700">{line.description}</span>
+                    <span className="text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
+                    <span className="font-semibold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
+                  </div>
+                ))}
+              </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button className="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700" onClick={() => updatePurchaseStatus(purchase.id, "Recibida")}>Marcar recibida</button>
                 <button className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={() => updatePurchaseStatus(purchase.id, "Pagada")}>Marcar pagada</button>
+                <button className="rounded-full bg-cyan-100 px-4 py-2 text-sm font-bold text-cyan-700" onClick={() => startEditPurchase(purchase)}>Editar</button>
+                <button className="rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-700" onClick={() => exportPurchasePDF(purchase)}>PDF</button>
+                <button className="rounded-full bg-rose-100 px-4 py-2 text-sm font-bold text-rose-700" onClick={() => deletePurchase(purchase.id)}>Eliminar</button>
               </div>
             </article>
           ))}
@@ -2265,9 +2593,18 @@ export default function App() {
           </div>
 
           <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
-            <h3 className="text-xl font-black text-slate-950">Facturas recientes</h3>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-xl font-black text-slate-950">Facturas recientes</h3>
+              <div className="flex flex-wrap gap-2">
+                <button className="rounded-full bg-cyan-100 px-4 py-2 text-sm font-bold text-cyan-700" onClick={exportInvoicesCSV}>CSV</button>
+              </div>
+            </div>
+            <div className="mt-3">
+              <input className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceQuery} onChange={(e) => setInvoiceQuery(e.target.value)} placeholder="Buscar por ID, cliente o documento" />
+            </div>
             <div className="mt-4 grid gap-3">
-              {invoices.map((invoice) => {
+              {visibleInvoices.length === 0 && <p className="text-sm text-slate-400">No se encontraron facturas.</p>}
+              {visibleInvoices.map((invoice) => {
                 const totals = invoiceTotals(invoice.lines);
                 return (
                   <button key={invoice.id} className={cn("rounded-3xl p-4 text-left ring-1 transition", activeInvoiceId === invoice.id ? "bg-slate-950 text-white ring-slate-950" : "bg-white text-slate-950 ring-slate-200 hover:bg-slate-50")} onClick={() => setActiveInvoiceId(invoice.id)}>
@@ -2279,6 +2616,7 @@ export default function App() {
                       <div className="flex items-center gap-3">
                         <StatusBadge status={invoice.status} />
                         <p className="text-xl font-black">{formatMoney(totals.total)}</p>
+                        <button className={cn("rounded-full px-3 py-1.5 text-xs font-bold", activeInvoiceId === invoice.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600")} onClick={(e) => { e.stopPropagation(); exportInvoicePDF(invoice); }}>PDF</button>
                       </div>
                     </div>
                   </button>
@@ -2320,7 +2658,7 @@ export default function App() {
                 <option value="Impuestos">Impuestos</option>
               </select>
             </label>
-            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+            <div className="grid gap-4 sm:grid-cols-[1fr_100px]">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Vence
                 <input type="date" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={serviceForm.dueDate} onChange={(event) => setServiceForm((form) => ({ ...form, dueDate: event.target.value }))} />
@@ -2351,18 +2689,16 @@ export default function App() {
                 </div>
                 <div className="mt-4 grid gap-3">
                   {catPayments.map((payment) => (
-                    <div key={payment.id} className="flex flex-col gap-3 rounded-3xl bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex-1">
+                    <div key={payment.id} className="grid gap-3 rounded-3xl bg-slate-50 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+                      <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="font-black text-slate-950">{payment.service}</p>
                           <StatusBadge status={payment.status} />
                         </div>
                         <p className="mt-1 text-sm text-slate-500">{payment.provider} · vence {formatDate(payment.dueDate)} · {payment.method}</p>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <p className="text-xl font-black text-slate-950">{formatMoney(payment.amount)}</p>
-                        {payment.status !== "Pagado" && <button className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={() => markServicePaid(payment.id)}>Pagar</button>}
-                      </div>
+                      <p className="text-xl font-black text-slate-950">{formatMoney(payment.amount)}</p>
+                      {payment.status !== "Pagado" && <button className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={() => markServicePaid(payment.id)}>Pagar</button>}
                     </div>
                   ))}
                 </div>
@@ -2395,7 +2731,7 @@ export default function App() {
                 <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.dv} onChange={(event) => setCustomerForm((form) => ({ ...form, dv: event.target.value }))} placeholder="00" />
               </label>
             </div>
-            <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
+            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Email
                 <input type="email" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.email} onChange={(event) => setCustomerForm((form) => ({ ...form, email: event.target.value }))} />
@@ -2457,9 +2793,18 @@ export default function App() {
               {customers.map((customer) => (
                 <article key={customer.id} className="rounded-3xl bg-slate-50 p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
+                    <div className="flex-1">
                       <p className="font-black text-slate-950">{customer.name}</p>
-                      <p className="mt-1 text-sm text-slate-500">Documento/RUC {customer.document} DV {customer.dv} · {customer.phone}</p>
+                      <div className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr_auto_1fr]">
+                        <span className="font-semibold text-slate-500">Documento:</span>
+                        <span className="text-slate-700">{customer.document}</span>
+                        <span className="font-semibold text-slate-500">DV:</span>
+                        <span className="text-slate-700">{customer.dv}</span>
+                        <span className="font-semibold text-slate-500">Teléfono:</span>
+                        <span className="text-slate-700">{customer.phone}</span>
+                        <span className="font-semibold text-slate-500">Email:</span>
+                        <span className="text-slate-700">{customer.email}</span>
+                      </div>
                       <p className="mt-2 text-sm leading-6 text-slate-600">{customer.prescription}</p>
                     </div>
                     <p className="text-lg font-black text-slate-950">{formatMoney(customer.balance)}</p>
@@ -2677,6 +3022,10 @@ export default function App() {
               <input type="date" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={appointmentForm.date} onChange={(event) => setAppointmentForm((form) => ({ ...form, date: event.target.value }))} />
             </label>
             <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Hora preferida
+              <input type="time" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={appointmentForm.time} onChange={(event) => setAppointmentForm((form) => ({ ...form, time: event.target.value }))} />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
               Motivo
               <textarea className="min-h-28 rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={appointmentForm.reason} onChange={(event) => setAppointmentForm((form) => ({ ...form, reason: event.target.value }))} />
             </label>
@@ -2689,7 +3038,7 @@ export default function App() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-700">{appointment.id}</p>
-                  <h3 className="mt-2 text-xl font-black text-slate-950">{formatDate(appointment.date)}</h3>
+                  <h3 className="mt-2 text-xl font-black text-slate-950">{formatDate(appointment.date)} <span className="text-base font-bold text-slate-500">{appointment.time}</span></h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{appointment.reason}</p>
                 </div>
                 <StatusBadge status={appointment.status} />
@@ -2706,7 +3055,7 @@ export default function App() {
   const resultsView = (
     <div className="space-y-8">
       <SectionTitle title="Examenes de vision" subtitle="Registro de examenes visuales, formula optica y recomendaciones de lentes." />
-      {role === "Administrador" && (
+      {isAdminRole(displayRole) && (
         <details className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
           <summary className="cursor-pointer text-lg font-black text-slate-950">Nuevo examen visual</summary>
           <form className="mt-6 grid gap-6" onSubmit={(e) => {
@@ -2786,7 +3135,7 @@ export default function App() {
         </details>
       )}
       <div className="grid gap-6">
-        {(role === "Administrador" ? examResults : examResults.filter(e => e.customerId === activeClientId)).map((exam) => {
+        {(isAdminRole(role) ? examResults : examResults.filter(e => e.customerId === activeClientId)).map((exam) => {
           const formatRx = (v: number) => (v >= 0 ? "+" : "") + v.toFixed(2);
           return (
             <article key={exam.id} className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
@@ -2834,24 +3183,7 @@ export default function App() {
   );
 
   const aiSearchView = (
-    <div className="space-y-6">
-      <section className="rounded-[2rem] bg-white p-6 shadow-lg shadow-slate-200/50 ring-1 ring-slate-200/80">
-        <h2 className="mb-4 text-xl font-black text-slate-950">Conocimiento Optico</h2>
-        <p className="mb-6 text-sm text-slate-500">Busca informacion sobre lentes, monturas, tratamientos, tecnologia optica, marcas y mas. No necesita internet.</p>
-        <form onSubmit={(e) => { e.preventDefault(); if (aiQuery.trim()) handleAISearch(aiQuery); }}>
-          <div className="flex gap-3">
-            <input name="q" value={aiQuery} onChange={(e) => setAiQuery(e.target.value)} className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" placeholder="Ej: lentes progresivos, filtro luz azul, monturas de titanio..." />
-            <button type="submit" disabled={aiLoading} className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-950/15 transition hover:bg-slate-800 disabled:opacity-50">{aiLoading ? "Buscando..." : "Buscar"}</button>
-          </div>
-        </form>
-        {aiError && <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-200">{aiError}</p>}
-        {aiResult && (
-          <div className="mt-6 rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-200">
-            <div className="max-w-none text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{aiResult}</div>
-          </div>
-        )}
-      </section>
-    </div>
+    <ChatBot knowledgeBase={knowledgeBase} darkMode={darkMode} role={displayRole} onNavigate={setActiveView} inventory={inventory} customers={customers} invoices={invoices} purchases={purchases} />
   );
 
   const clinicalHistoriesView = (
@@ -3004,21 +3336,23 @@ export default function App() {
       </div>
 
       <div className="mx-auto flex min-h-screen w-full max-w-[1560px] flex-col lg:flex-row">
-        <aside className="sticky top-0 z-20 flex max-h-screen flex-col border-b border-slate-200/80 bg-[#f4f1eb]/90 px-4 py-4 backdrop-blur lg:h-screen lg:w-80 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+        <aside className={cn("sticky top-0 z-20 flex max-h-screen flex-col border-b px-4 py-4 backdrop-blur lg:h-screen lg:w-80 lg:border-b-0 lg:border-r lg:px-5 lg:py-6", darkMode ? "border-slate-700/80 bg-slate-950" : "border-slate-200/80 bg-[#f4f1eb]/90")}>
           <div className="flex flex-col gap-5">
             <Logo />
-            <div className="grid grid-cols-2 gap-2 rounded-full bg-white p-1 shadow-sm ring-1 ring-slate-200">
-              {(["Administrador", "Cliente"] as Role[]).map((item) => (
-                <button key={item} className={cn("rounded-full px-3 py-2 text-sm font-black transition", role === item ? "bg-slate-950 text-white shadow-lg shadow-slate-950/15" : "text-slate-600 hover:bg-slate-100")} onClick={() => switchRole(item)} aria-pressed={role === item}>
-                  {item}
-                </button>
-              ))}
-            </div>
+            {!isMobile && (
+              <div className={cn("grid grid-cols-2 gap-2 rounded-full p-1 shadow-sm ring-1", darkMode ? "bg-slate-800 ring-slate-700" : "bg-white ring-slate-200")}>
+                {(["Super Admin", "Administrador", "Cliente"] as Role[]).map((item) => (
+                  <button key={item} className={cn("rounded-full px-3 py-2 text-sm font-black transition", displayRole === item ? "bg-slate-950 text-white shadow-lg shadow-slate-950/15" : darkMode ? "text-slate-400 hover:bg-slate-700" : "text-slate-600 hover:bg-slate-100")} onClick={() => switchRole(item)} aria-pressed={displayRole === item}>
+                    {item}
+                  </button>
+                ))}
+              </div>
+            )}
 
-            {role === "Cliente" && (
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
+            {displayRole === "Cliente" && (
+              <label className={cn("grid gap-2 text-sm font-bold", darkMode ? "text-slate-300" : "text-slate-700")}>
                 Cliente activo
-                <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={activeClientId} onChange={(event) => setActiveClientId(event.target.value)}>
+                <select className={cn("rounded-2xl border px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100", darkMode ? "border-slate-600 bg-slate-800 text-white" : "border-slate-200 bg-white")} value={activeClientId} onChange={(event) => setActiveClientId(event.target.value)}>
                   {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
                 </select>
               </label>
@@ -3027,31 +3361,50 @@ export default function App() {
 
           <nav className="-mx-1 flex gap-2 overflow-x-auto pb-2 lg:mx-0 lg:mt-5 lg:block lg:flex-1 lg:space-y-2 lg:overflow-y-auto lg:pb-0">
             {currentNav.map((item) => (
-              <button key={item.id} className={cn("group min-w-44 rounded-3xl px-4 py-3 text-left transition lg:w-full", activeView === item.id ? "bg-slate-950 text-white shadow-xl shadow-slate-950/15" : "bg-white/70 text-slate-700 ring-1 ring-slate-200 hover:bg-white")} onClick={() => setActiveView(item.id)}>
+              <button key={item.id} className={cn("group min-w-44 rounded-3xl px-4 py-3 text-left transition lg:w-full", activeView === item.id ? "bg-slate-950 text-white shadow-xl shadow-slate-950/15" : darkMode ? "bg-slate-800 text-slate-300 ring-1 ring-slate-700 hover:bg-slate-700" : "bg-white/70 text-slate-700 ring-1 ring-slate-200 hover:bg-white")} onClick={() => setActiveView(item.id)}>
                 <span className="block text-sm font-black">{item.label}</span>
                 <span className={cn("mt-1 block text-xs leading-5", activeView === item.id ? "text-slate-300" : "text-slate-500")}>{item.description}</span>
               </button>
             ))}
           </nav>
+          <button className={cn("mt-4 flex w-full items-center gap-3 rounded-3xl px-4 py-3 text-left text-sm font-black transition", darkMode ? "text-slate-400 ring-1 ring-slate-700 hover:bg-slate-800" : "text-slate-600 ring-1 ring-slate-200 hover:bg-white/70")} onClick={() => setDarkMode((d) => !d)}>
+            <span className={cn("grid h-7 w-7 place-items-center rounded-full text-xs font-black", darkMode ? "bg-slate-700 text-slate-300" : "bg-slate-200 text-slate-700")}>{darkMode ? "O" : "C"}</span>
+            {darkMode ? "Modo claro" : "Modo oscuro"}
+          </button>
+          <button className="mt-2 flex w-full items-center gap-3 rounded-3xl bg-rose-600 px-4 py-3 text-left text-sm font-black text-white shadow-lg shadow-rose-600/20" onClick={clearAllData}>
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 text-xs font-black text-white">X</span>
+            Limpiar datos de prueba
+          </button>
         </aside>
 
         <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
-          <header className="reveal-up mb-8 flex flex-col gap-4 rounded-[2rem] bg-white/75 p-4 shadow-lg shadow-slate-200/50 ring-1 ring-slate-200/80 backdrop-blur md:flex-row md:items-center md:justify-between">
+          <header className={cn("reveal-up mb-8 flex flex-col gap-4 rounded-[2rem] p-4 shadow-lg md:flex-row md:items-center md:justify-between", darkMode ? "bg-slate-900 shadow-black/30 ring-1 ring-slate-700/80 backdrop-blur" : "bg-white/75 shadow-slate-200/50 ring-1 ring-slate-200/80 backdrop-blur")}>
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.26em] text-cyan-700">{role}</p>
-              <p className="mt-1 text-lg font-black text-slate-950">{role === "Administrador" ? business.owner : activeClient?.name ?? "Cliente"}</p>
+              <p className="text-xs font-black uppercase tracking-[0.26em] text-cyan-700">{displayRole}</p>
+              <p className={cn("mt-1 text-lg font-black", darkMode ? "text-white" : "text-slate-950")}>{isAdminRole(displayRole) ? business.owner : activeClient?.name ?? "Cliente"}</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <p className="text-sm font-black italic text-slate-500">Cuidamos tu salud visual con profesionalismo y calidez. Porque ver bien es vivir mejor.</p>
+              <p className={cn("text-sm font-black italic", darkMode ? "text-white/90" : "text-slate-500")}>Cuidamos tu salud visual con profesionalismo y calidez. Porque ver bien es vivir mejor.</p>
               <a className="rounded-2xl bg-cyan-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-cyan-600/20" href={`https://www.google.com/maps/search/?api=1&query=8.430183,-82.426391`} target="_blank" rel="noreferrer">
                 Ubicacion
               </a>
-              <a className="rounded-2xl bg-emerald-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-emerald-600/20" href={whatsAppUrl(role === "Cliente" && activeClient ? `Hola, soy ${activeClient.name} y deseo comunicarme con la optica.` : undefined)} target="_blank" rel="noreferrer">
+              <a className="rounded-2xl bg-emerald-600 px-5 py-3 text-center text-sm font-black text-white shadow-lg shadow-emerald-600/20" href={whatsAppUrl(displayRole, activeClient?.name)} target="_blank" rel="noreferrer">
                 WhatsApp
               </a>
 
-              {deferredPrompt && (
-                <button className="rounded-2xl bg-amber-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-amber-600/20" onClick={async () => { (deferredPrompt as any).prompt(); const res = await (deferredPrompt as any).userChoice; if (res.outcome === "accepted") setDeferredPrompt(null); }}>
+              {canInstall && (
+                <button className="rounded-2xl bg-amber-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-amber-600/20" onClick={() => {
+                  const html = '<!doctype html>' + document.documentElement.outerHTML;
+                  const blob = new Blob([html], { type: "text/html" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "SOP-Optica.html";
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}>
                   Instalar app
                 </button>
               )}
@@ -3064,7 +3417,7 @@ export default function App() {
       </div>
       <a
         className="fixed bottom-5 right-5 z-30 rounded-full bg-emerald-600 px-5 py-4 text-sm font-black text-white shadow-2xl shadow-emerald-900/25 ring-1 ring-white/40 transition hover:-translate-y-0.5"
-        href={whatsAppUrl(role === "Cliente" && activeClient ? `Hola, soy ${activeClient.name}. Necesito asistencia de Servicios Opticos Profesionales.` : undefined)}
+                href={whatsAppUrl(role, activeClient?.name, true)}
         target="_blank"
         rel="noreferrer"
         aria-label="Contactar por WhatsApp"

@@ -3,6 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+const hasCredentials = !!supabaseUrl && !!supabaseAnonKey;
+console.log("[Supabase] URL presente:", !!supabaseUrl, "Key presente:", !!supabaseAnonKey, "Usando real:", hasCredentials);
+
 const dummy = {
   from: () => ({ select: async () => ({ data: [], error: null }), upsert: async () => ({ error: null }) }),
   channel: () => ({ on: () => ({ subscribe: () => {} }) }),
@@ -14,8 +17,8 @@ const dummy = {
 };
 
 export const supabase =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey, {
+  hasCredentials
+    ? createClient(supabaseUrl!, supabaseAnonKey!, {
         auth: { persistSession: true, autoRefreshToken: true },
       })
     : (dummy as ReturnType<typeof createClient>);
