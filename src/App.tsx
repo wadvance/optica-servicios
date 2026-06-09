@@ -1112,7 +1112,7 @@ export default function App() {
   const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
   const [purchaseForm, setPurchaseForm] = useState({ supplier: "", ruc: "", dv: "" });
   const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([]);
-  const [purchaseLineForm, setPurchaseLineForm] = useState({ description: "", qty: "1", unitPrice: "0", barcode: "" });
+  const [purchaseLineForm, setPurchaseLineForm] = useState({ description: "", qty: "", unitPrice: "0", barcode: "" });
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
   const [purchaseQuery, setPurchaseQuery] = useState("");
   const [purchaseStatusFilter, setPurchaseStatusFilter] = useState("Todas");
@@ -1777,13 +1777,13 @@ export default function App() {
 
   function addPurchaseLine() {
     const description = purchaseLineForm.description.trim();
-    const qty = Number(purchaseLineForm.qty);
+    const qty = Number(purchaseLineForm.qty) || 1;
     const unitPrice = Number(purchaseLineForm.unitPrice);
     const manualBarcode = purchaseLineForm.barcode?.trim() || "";
-    if (!description || Number.isNaN(qty) || qty < 1 || Number.isNaN(unitPrice) || unitPrice < 0) return;
+    if (!description || Number.isNaN(unitPrice) || unitPrice < 0) return;
     const barcode = manualBarcode || generateBarcode();
     setPurchaseLines((prev) => [...prev, { description, qty, unitPrice, barcode }]);
-    setPurchaseLineForm({ description: "", qty: "1", unitPrice: "0", barcode: "" });
+    setPurchaseLineForm({ description: "", qty: "", unitPrice: "0", barcode: "" });
   }
 
   function removePurchaseLine(index: number) {
@@ -1825,7 +1825,7 @@ export default function App() {
     }
     setPurchaseForm({ supplier: "", ruc: "", dv: "" });
     setPurchaseLines([]);
-    setPurchaseLineForm({ description: "", qty: "1", unitPrice: "0" });
+    setPurchaseLineForm({ description: "", qty: "", unitPrice: "0" });
   }
 
   function updatePurchaseStatus(id: string, status: PurchaseOrder["status"]) {
@@ -1848,7 +1848,7 @@ export default function App() {
     setEditingPurchaseId(null);
     setPurchaseForm({ supplier: "", ruc: "", dv: "" });
     setPurchaseLines([]);
-    setPurchaseLineForm({ description: "", qty: "1", unitPrice: "0", barcode: "" });
+    setPurchaseLineForm({ description: "", qty: "", unitPrice: "0", barcode: "" });
   }
 
   function addServicePayment(event: FormEvent<HTMLFormElement>) {
