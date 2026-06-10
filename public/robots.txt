@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://sop-optica.onrender.com/sitemap.xml
