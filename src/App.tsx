@@ -1752,6 +1752,7 @@ export default function App() {
     setDraftLines([]);
     setActiveInvoiceId(id);
     setInvoiceCustomerId("");
+    setTimeout(() => window.print(), 500);
     setInvoiceCustomerName("");
     setInvoiceCustomerDoc("");
     setInvoiceCustomerPhone("");
@@ -2720,7 +2721,7 @@ export default function App() {
                           <p className="font-black text-slate-950">{payment.service}</p>
                           <StatusBadge status={payment.status} />
                         </div>
-                        <p className="mt-1 text-sm text-slate-500">{payment.provider} · vence {formatDate(payment.dueDate)} · {payment.method}</p>
+                        <p className="mt-1 text-sm text-slate-500">{payment.provider} · {payment.method}</p>
                       </div>
                       <p className="text-xl font-black text-slate-950">{formatMoney(payment.amount)}</p>
                       {payment.status !== "Pagado" && <button className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={() => markServicePaid(payment.id)}>Pagar</button>}
@@ -2746,24 +2747,24 @@ export default function App() {
               Nombre o razon social
               <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.name} onChange={(event) => setCustomerForm((form) => ({ ...form, name: event.target.value }))} />
             </label>
-            <div className="grid gap-4 sm:grid-cols-[1fr_80px]">
+            <div className="grid gap-4 sm:grid-cols-[1fr_70px]">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Cedula / RUC
                 <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.document} onChange={(event) => setCustomerForm((form) => ({ ...form, document: event.target.value }))} />
               </label>
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 DV
-                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.dv} onChange={(event) => setCustomerForm((form) => ({ ...form, dv: event.target.value }))} placeholder="00" />
+                <input type="text" className="w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-2 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.dv} onChange={(event) => setCustomerForm((form) => ({ ...form, dv: event.target.value }))} placeholder="00" />
               </label>
             </div>
-            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+            <div className="grid gap-4 sm:grid-cols-[1fr_110px]">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Email
                 <input type="email" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.email} onChange={(event) => setCustomerForm((form) => ({ ...form, email: event.target.value }))} />
               </label>
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Telefono
-                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.phone} onChange={(event) => setCustomerForm((form) => ({ ...form, phone: event.target.value }))} placeholder="+507" />
+                <input type="text" className="w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-2 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerForm.phone} onChange={(event) => setCustomerForm((form) => ({ ...form, phone: event.target.value }))} placeholder="+507" />
               </label>
             </div>
             <label className="grid gap-2 text-sm font-bold text-slate-700">
