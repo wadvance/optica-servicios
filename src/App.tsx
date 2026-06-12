@@ -1580,20 +1580,15 @@ export default function App() {
 
 
   function updateStock(id: string, delta: number) {
-    setInventory((items) =>
-      items.map((item) => {
-        if (item.id !== id) {
-          return item;
-        }
-
+    setInventory((items) => {
+      const next = items.map((item) => {
+        if (item.id !== id) return item;
         const nextStock = Math.max(0, item.stock + delta);
-        return {
-          ...item,
-          stock: nextStock,
-          status: item.status === "Servicio" ? "Servicio" : nextStock <= item.minStock ? "Bajo stock" : "Activo",
-        };
-      }),
-    );
+        return { ...item, stock: nextStock, status: item.status === "Servicio" ? "Servicio" : nextStock <= item.minStock ? "Bajo stock" : "Activo" };
+      });
+      localStorage.setItem("sop-inventory", JSON.stringify(next));
+      return next;
+    });
   }
 
   function generateSkuFromName(name: string): string {
@@ -1605,7 +1600,11 @@ export default function App() {
 
   function deleteInventoryItem(id: string) {
     if (!confirm("Eliminar este producto del inventario?")) return;
-    setInventory((items) => items.filter((item) => item.id !== id));
+    setInventory((items) => {
+      const next = items.filter((item) => item.id !== id);
+      localStorage.setItem("sop-inventory", JSON.stringify(next));
+      return next;
+    });
   }
 
   function startEditInventoryItem(item: InventoryItem) {
@@ -1662,8 +1661,8 @@ export default function App() {
     const location = newInventoryItem.location.trim() || "Deposito";
 
     if (editingProductId) {
-      setInventory((items) =>
-        items.map((item) => {
+      setInventory((items) => {
+        const next = items.map((item) => {
           if (item.id !== editingProductId) return item;
           const nextStock = item.status === "Servicio" ? item.stock : stock;
           return {
@@ -1680,38 +1679,46 @@ export default function App() {
             location,
             status: item.status === "Servicio" ? "Servicio" : nextStock <= minStock ? "Bajo stock" : "Activo",
           };
-        }),
-      );
+        });
+        localStorage.setItem("sop-inventory", JSON.stringify(next));
+        return next;
+      });
       setEditingProductId(null);
     } else if (existingItem) {
-      setInventory((items) =>
-        items.map((item) => {
+      setInventory((items) => {
+        const next = items.map((item) => {
           if (item.id !== existingItem.id) return item;
           const nextStock = item.stock + stock;
           return { ...item, stock: nextStock, status: item.status === "Servicio" ? "Servicio" : nextStock <= item.minStock ? "Bajo stock" : "Activo" };
-        }),
-      );
+        });
+        localStorage.setItem("sop-inventory", JSON.stringify(next));
+        return next;
+      });
     } else {
       const nextId = `INV-${String(inventory.length + 1).padStart(3, "0")}`;
       const isService = category.toLowerCase().includes("servicio");
-      setInventory((items) => [
-        ...items,
-        {
-          id: nextId,
-          sku,
-          name: newInventoryItem.name.trim(),
-          category,
-          model,
-          supplier,
-          stock,
-          minStock,
-          cost,
-          price,
-          taxRate: isService ? 0 : PANAMA_TAX_RATE,
-          location,
-          status: isService ? "Servicio" : stock <= minStock ? "Bajo stock" : "Activo",
-        },
-      ]);
+      setInventory((items) => {
+        const next = [
+          ...items,
+          {
+            id: nextId,
+            sku,
+            name: newInventoryItem.name.trim(),
+            category,
+            model,
+            supplier,
+            stock,
+            minStock,
+            cost,
+            price,
+            taxRate: isService ? 0 : PANAMA_TAX_RATE,
+            location,
+            status: isService ? "Servicio" : stock <= minStock ? "Bajo stock" : "Activo",
+          },
+        ];
+        localStorage.setItem("sop-inventory", JSON.stringify(next));
+        return next;
+      });
     }
 
     setInventoryQuery(sku);
