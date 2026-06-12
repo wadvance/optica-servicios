@@ -2033,6 +2033,13 @@ export default function App() {
     window.location.reload();
   }
 
+  function forceSyncFromSupabase() {
+    if (!window.confirm("Forzar sincronizacion desde Supabase? Se limpiara el almacenamiento local y se recargara la pagina.")) return;
+    const keys = ["sop-inventory", "sop-purchases", "sop-invoices", "sop-customers", "sop-service-payments", "sop-appointments", "sop-users", "sop-exams"];
+    for (const key of keys) localStorage.removeItem(key);
+    window.location.reload();
+  }
+
   function importAllData(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -3608,6 +3615,12 @@ export default function App() {
             <button className="mt-2 flex w-full items-center gap-3 rounded-3xl bg-amber-600 px-4 py-3 text-left text-sm font-black text-white shadow-lg shadow-amber-600/20" onClick={restoreFromAutoBackup}>
               <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 text-xs font-black text-white">↺</span>
               Restaurar backup automatico
+            </button>
+          )}
+          {displayRole === "Super Admin" && (
+            <button className="mt-2 flex w-full items-center gap-3 rounded-3xl bg-sky-600 px-4 py-3 text-left text-sm font-black text-white shadow-lg shadow-sky-600/20" onClick={forceSyncFromSupabase}>
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 text-xs font-black text-white">⇅</span>
+              Forzar sync desde Supabase
             </button>
           )}
           {displayRole === "Super Admin" && (
