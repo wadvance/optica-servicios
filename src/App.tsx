@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import { cn } from "./utils/cn";
 import { supabase } from "./lib/supabase";
 import { sendRegistrationEmail } from "./lib/email";
-import { loadAllSeedData, saveInventory, savePurchases, saveServicePayments, saveCustomers, saveInvoices, saveAppointments, saveUserAccounts } from "./lib/supabase-data";
+import { loadAllSeedData, saveInventory, savePurchases, saveServicePayments, saveCustomers, saveInvoices, saveAppointments, saveUserAccounts, getBackups, restoreFromBackup } from "./lib/supabase-data";
 import ChatBot from "./components/ChatBot";
 
 type Role = "Super Admin" | "Administrador" | "Cliente";
@@ -2019,9 +2019,13 @@ export default function App() {
     } catch { /* silent */ }
   }
 
-  function exportAllData() {
-    const data = { inventory, purchases, invoices, customers, servicePayments, appointments, users, examResults, exportedAt: new Date().toISOString() };
-    downloadFile(JSON.stringify(data, null, 2), `optica-backup-${todayDate()}.json`, "application/json");
+  function restoreFromAutoBackup() {
+    const keys = ["sop-inventory", "sop-purchases", "sop-invoices", "sop-customers", "sop-service-payments", "sop-appointments", "sop-users", "sop-exams"];
+    const available = keys.filter((k) => getBackups(k).length > 0);
+    if (available.length === 0) return alert("No hay backups automaticos disponibles.");
+    if (!window.confirm(`Restaurar datos desde el backup automatico?\n\nBackups encontrados: ${available.length}\nSe recargara la pagina para aplicar los cambios.`)) return;
+    for (const key of keys) restoreFromBackup(key, 0);
+    window.location.reload();
   }
 
   function importAllData(event: React.ChangeEvent<HTMLInputElement>) {
@@ -3594,6 +3598,12 @@ export default function App() {
                 <input type="file" accept=".json" className="hidden" onChange={importAllData} />
               </label>
             </div>
+          )}
+          {displayRole === "Super Admin" && (
+            <button className="mt-2 flex w-full items-center gap-3 rounded-3xl bg-amber-600 px-4 py-3 text-left text-sm font-black text-white shadow-lg shadow-amber-600/20" onClick={restoreFromAutoBackup}>
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 text-xs font-black text-white">↺</span>
+              Restaurar backup automatico
+            </button>
           )}
           {displayRole === "Super Admin" && (
             <button className="mt-2 flex w-full items-center gap-3 rounded-3xl bg-rose-600 px-4 py-3 text-left text-sm font-black text-white shadow-lg shadow-rose-600/20" onClick={clearAllData}>
