@@ -2408,9 +2408,10 @@ export default function App() {
                 if (match) {
                   setEditingProductId(match.id);
                   setNewInventoryItem({ name, category: match.category, model: match.model, sku: match.sku, stock: String(match.stock), minStock: String(match.minStock), cost: String(match.cost), price: String(match.price), supplier: match.supplier, location: match.location });
-                } else {
-                  setEditingProductId(null);
+                } else if (!editingProductId) {
                   setNewInventoryItem((prev) => ({ ...prev, name, sku: prev.sku || generateSkuFromName(name) }));
+                } else {
+                  setNewInventoryItem((prev) => ({ ...prev, name }));
                 }
               }} placeholder="Buscar producto existente o escribir nuevo" />
             </div>
