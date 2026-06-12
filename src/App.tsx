@@ -2019,6 +2019,11 @@ export default function App() {
     } catch { /* silent */ }
   }
 
+  function exportAllData() {
+    const data = { inventory, purchases, invoices, customers, servicePayments, appointments, users, examResults, exportedAt: new Date().toISOString() };
+    downloadFile(JSON.stringify(data, null, 2), `optica-backup-${todayDate()}.json`, "application/json");
+  }
+
   function restoreFromAutoBackup() {
     const keys = ["sop-inventory", "sop-purchases", "sop-invoices", "sop-customers", "sop-service-payments", "sop-appointments", "sop-users", "sop-exams"];
     const available = keys.filter((k) => getBackups(k).length > 0);
