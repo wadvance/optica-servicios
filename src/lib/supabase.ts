@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./supabase-config";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
 
 const hasCredentials = !!supabaseUrl && !!supabaseAnonKey;
-console.log("[Supabase] URL presente:", !!supabaseUrl, "Key presente:", !!supabaseAnonKey, "Usando real:", hasCredentials);
 
 const dummy = {
   from: () => ({ select: async () => ({ data: [], error: null }), upsert: async () => ({ error: null }) }),
