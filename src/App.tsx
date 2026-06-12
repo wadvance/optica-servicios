@@ -310,6 +310,36 @@ const inventorySeed: InventoryItem[] = [
     location: "Consultorio",
     status: "Servicio",
   },
+  {
+    id: "INV-008",
+    sku: "PAS-HOM-001",
+    name: "Pasta Hombre",
+    category: "Pasta Hombre",
+    model: "Clasica",
+    supplier: "Distribuidora Visual PA",
+    stock: 15,
+    minStock: 5,
+    cost: 22,
+    price: 70,
+    taxRate: PANAMA_TAX_RATE,
+    location: "Vitrina A",
+    status: "Activo",
+  },
+  {
+    id: "INV-009",
+    sku: "PAS-MUJ-001",
+    name: "Pasta Mujer",
+    category: "Pasta Mujer",
+    model: "Clasica",
+    supplier: "Distribuidora Visual PA",
+    stock: 15,
+    minStock: 5,
+    cost: 22,
+    price: 70,
+    taxRate: PANAMA_TAX_RATE,
+    location: "Vitrina A",
+    status: "Activo",
+  },
 ];
 
 const purchasesSeed: PurchaseOrder[] = [
@@ -888,6 +918,21 @@ export default function App() {
   const [darkMode, setDarkMode] = usePersistentState<boolean>("sop-theme", true);
   const [isMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 1024);
 
+  // Force all seed items into inventory on every load
+  useEffect(() => {
+    setInventory((prev) => {
+      const merged = [...prev];
+      let changed = false;
+      for (const seed of inventorySeed) {
+        if (!merged.some((item) => item.id === seed.id)) {
+          merged.push(seed);
+          changed = true;
+        }
+      }
+      return changed ? merged : prev;
+    });
+  }, []);
+
   useEffect(() => {
     setPurchases((prev) => prev.map((p) => {
       if (!p.lines && typeof (p as any).items === "number") {
@@ -1153,7 +1198,13 @@ export default function App() {
     let cancelled = false;
     loadAllSeedData().then((data) => {
       if (cancelled) return;
-      if (data.inventory.length > 0) setInventory(data.inventory);
+      const mergedInventory = [...data.inventory];
+      for (const seed of inventorySeed) {
+        if (!mergedInventory.some((item) => item.id === seed.id)) {
+          mergedInventory.push(seed);
+        }
+      }
+      setInventory(mergedInventory);
       if (data.purchases.length > 0) {
         const migrated = data.purchases.map((p: any) => {
           if (!p.lines && typeof p.items === "number") {
@@ -2408,10 +2459,9 @@ export default function App() {
                 if (match) {
                   setEditingProductId(match.id);
                   setNewInventoryItem({ name, category: match.category, model: match.model, sku: match.sku, stock: String(match.stock), minStock: String(match.minStock), cost: String(match.cost), price: String(match.price), supplier: match.supplier, location: match.location });
-                } else if (!editingProductId) {
-                  setNewInventoryItem((prev) => ({ ...prev, name, sku: prev.sku || generateSkuFromName(name) }));
                 } else {
-                  setNewInventoryItem((prev) => ({ ...prev, name }));
+                  setEditingProductId(null);
+                  setNewInventoryItem({ name, category: "", model: "", sku: generateSkuFromName(name), stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
                 }
               }} placeholder="Buscar producto existente o escribir nuevo" />
             </div>
@@ -2474,9 +2524,9 @@ export default function App() {
             ))}
           </datalist>
           <datalist id="cat-list">
-            <option value="Metal Hombre" />
-            <option value="Metal Mujer" />
-            <option value="Pasta" />
+            {[...new Set(inventory.map((i) => i.category))].filter(Boolean).map((cat) => (
+              <option key={cat} value={cat} />
+            ))}
           </datalist>
           <datalist id="model-list">
             {[...new Set(inventory.map((i) => i.model))].filter(Boolean).map((mod) => (
@@ -2505,7 +2555,7 @@ export default function App() {
           <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
             <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={inventoryQuery} onChange={(event) => setInventoryQuery(event.target.value)} placeholder="Buscar por nombre, SKU o proveedor" />
             <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={inventoryCategory} onChange={(event) => setInventoryCategory(event.target.value)}>
-              {["Todas", "Metal Hombre", "Metal Mujer", "Pasta"].map((category) => <option key={category}>{category}</option>)}
+              {["Todas", ...new Set(inventory.map((i) => i.category).filter(Boolean))].map((category) => <option key={category}>{category}</option>)}
             </select>
           </div>
 
