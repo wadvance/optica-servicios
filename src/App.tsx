@@ -17,6 +17,7 @@ export type InventoryItem = {
   sku: string;
   name: string;
   category: string;
+  model: string;
   supplier: string;
   stock: number;
   minStock: number;
@@ -209,6 +210,7 @@ const inventorySeed: InventoryItem[] = [
     sku: "MNT-AC-101",
     name: "Montura acetato profesional",
     category: "Monturas",
+    model: "Clasica",
     supplier: "Distribuidora Visual PA",
     stock: 18,
     minStock: 8,
@@ -223,6 +225,7 @@ const inventorySeed: InventoryItem[] = [
     sku: "MNT-MT-204",
     name: "Montura metal liviano",
     category: "Monturas",
+    model: "Metalica",
     supplier: "OptiSupply Panama",
     stock: 7,
     minStock: 10,
@@ -237,6 +240,7 @@ const inventorySeed: InventoryItem[] = [
     sku: "LEN-PROG-330",
     name: "Lente progresivo antirreflejo",
     category: "Lentes oftalmicos",
+    model: "Progresivo",
     supplier: "Laboratorio Central Optico",
     stock: 32,
     minStock: 12,
@@ -251,6 +255,7 @@ const inventorySeed: InventoryItem[] = [
     sku: "LEN-BLUE-220",
     name: "Filtro azul monofocal",
     category: "Lentes oftalmicos",
+    model: "Monofocal",
     supplier: "Laboratorio Central Optico",
     stock: 24,
     minStock: 10,
@@ -265,6 +270,7 @@ const inventorySeed: InventoryItem[] = [
     sku: "LC-HID-006",
     name: "Lentes de contacto hidratados",
     category: "Lentes de contacto",
+    model: "Hidratado",
     supplier: "Contact Vision Group",
     stock: 11,
     minStock: 14,
@@ -279,6 +285,7 @@ const inventorySeed: InventoryItem[] = [
     sku: "ACC-SOL-100",
     name: "Solucion multiproposito 360 ml",
     category: "Accesorios",
+    model: "Estandar",
     supplier: "Contact Vision Group",
     stock: 36,
     minStock: 18,
@@ -293,6 +300,7 @@ const inventorySeed: InventoryItem[] = [
     sku: "SRV-EXA-001",
     name: "Examen visual completo",
     category: "Servicios clinicos",
+    model: "",
     supplier: "Servicios internos",
     stock: 999,
     minStock: 0,
@@ -313,9 +321,9 @@ const purchasesSeed: PurchaseOrder[] = [
     date: "2026-05-03",
     status: "Recibida",
     lines: [
-      { description: "Lentes progresivos", qty: 20, unitPrice: 25, barcode: "7501234567890" },
-      { description: "Monturas metal", qty: 12, unitPrice: 40, barcode: "7501234567891" },
-      { description: "Lentes antirreflejo", qty: 10, unitPrice: 38, barcode: "7501234567892" },
+      { description: "Lentes progresivos", qty: 20, unitPrice: 25, barcode: "LEN-PROG-330" },
+      { description: "Monturas metal", qty: 12, unitPrice: 40, barcode: "MNT-MT-204" },
+      { description: "Lentes antirreflejo", qty: 10, unitPrice: 38, barcode: "LEN-BLUE-220" },
     ],
     subtotal: 1680,
     tax: 117.6,
@@ -329,9 +337,9 @@ const purchasesSeed: PurchaseOrder[] = [
     date: "2026-05-10",
     status: "Pendiente",
     lines: [
-      { description: "Soluciones multiproposito", qty: 48, unitPrice: 8.5, barcode: "7501234567893" },
-      { description: "Estuches para lentes", qty: 24, unitPrice: 5, barcode: "7501234567894" },
-      { description: "Paños microfibra", qty: 36, unitPrice: 3.5, barcode: "7501234567895" },
+      { description: "Soluciones multiproposito", qty: 48, unitPrice: 8.5, barcode: "ACC-SOL-100" },
+      { description: "Estuches para lentes", qty: 24, unitPrice: 5, barcode: "" },
+      { description: "Paños microfibra", qty: 36, unitPrice: 3.5, barcode: "" },
     ],
     subtotal: 720,
     tax: 50.4,
@@ -345,8 +353,8 @@ const purchasesSeed: PurchaseOrder[] = [
     date: "2026-05-12",
     status: "Pagada",
     lines: [
-      { description: "Lentes de contacto diarios", qty: 30, unitPrice: 15, barcode: "7501234567896" },
-      { description: "Lentes de contacto mensuales", qty: 20, unitPrice: 22, barcode: "7501234567897" },
+      { description: "Lentes de contacto diarios", qty: 30, unitPrice: 15, barcode: "LC-HID-006" },
+      { description: "Lentes de contacto mensuales", qty: 20, unitPrice: 22, barcode: "" },
     ],
     subtotal: 930,
     tax: 65.1,
@@ -795,7 +803,6 @@ function Logo() {
         <span className="lens-sweep absolute inset-0" />
       </div>
       <div>
-        <p className="text-xs uppercase tracking-[0.32em] text-cyan-700">Optica Panama</p>
         <h1 className="text-lg font-black leading-tight text-slate-950 sm:text-xl">{business.name}</h1>
       </div>
     </div>
@@ -1109,11 +1116,12 @@ export default function App() {
   const [applyItbms, setApplyItbms] = useState(true);
   const [draftLines, setDraftLines] = useState<InvoiceLine[]>([]);
   const [appointmentForm, setAppointmentForm] = useState({ date: "2026-06-21", time: "10:00", reason: "Examen visual" });
-  const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
+  const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
   const [purchaseForm, setPurchaseForm] = useState({ supplier: "", ruc: "", dv: "" });
   const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([]);
   const [purchaseLineForm, setPurchaseLineForm] = useState({ description: "", qty: "", unitPrice: "0", barcode: "" });
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [purchaseQuery, setPurchaseQuery] = useState("");
   const [purchaseStatusFilter, setPurchaseStatusFilter] = useState("Todas");
   const [invoiceQuery, setInvoiceQuery] = useState("");
@@ -1123,6 +1131,7 @@ export default function App() {
   const [techFilter, setTechFilter] = useState("Todos");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const inventoryFormRef = useRef<HTMLFormElement | null>(null);
   const scanFrameRef = useRef<number | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerStatus, setScannerStatus] = useState("Abre la camara y apunta al codigo de barras o QR del producto.");
@@ -1587,6 +1596,53 @@ export default function App() {
     );
   }
 
+  function generateSkuFromName(name: string): string {
+    if (!name.trim()) return "";
+    const prefix = name.trim().substring(0, 3).toUpperCase();
+    const num = Date.now().toString(36).slice(-4).toUpperCase();
+    return `${prefix}-${num}`;
+  }
+
+  function deleteInventoryItem(id: string) {
+    if (!confirm("Eliminar este producto del inventario?")) return;
+    setInventory((items) => items.filter((item) => item.id !== id));
+  }
+
+  function startEditInventoryItem(item: InventoryItem) {
+    setEditingProductId(item.id);
+    setNewInventoryItem({
+      name: item.name,
+      category: item.category,
+      model: item.model,
+      sku: item.sku,
+      stock: String(item.stock),
+      minStock: String(item.minStock),
+      cost: String(item.cost),
+      price: String(item.price),
+      supplier: item.supplier,
+      location: item.location,
+    });
+  }
+
+  function cancelEditInventoryItem() {
+    setEditingProductId(null);
+    setNewInventoryItem({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
+  }
+
+  function removeCategory(cat: string) {
+    if (!confirm(`Eliminar la categoria "${cat}"? Los productos pasaran a "General".`)) return;
+    setInventory((items) =>
+      items.map((item) => (item.category === cat ? { ...item, category: "General" } : item)),
+    );
+  }
+
+  function removeModel(mod: string) {
+    if (!confirm(`Eliminar el modelo "${mod}"? Los productos quedaran sin modelo.`)) return;
+    setInventory((items) =>
+      items.map((item) => (item.model === mod ? { ...item, model: "" } : item)),
+    );
+  }
+
   function addInventoryItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const sku = newInventoryItem.sku.trim();
@@ -1601,10 +1657,33 @@ export default function App() {
     }
 
     const category = newInventoryItem.category.trim() || "General";
+    const model = newInventoryItem.model.trim();
     const supplier = newInventoryItem.supplier.trim() || "Proveedor por asignar";
     const location = newInventoryItem.location.trim() || "Deposito";
 
-    if (existingItem) {
+    if (editingProductId) {
+      setInventory((items) =>
+        items.map((item) => {
+          if (item.id !== editingProductId) return item;
+          const nextStock = item.status === "Servicio" ? item.stock : stock;
+          return {
+            ...item,
+            sku,
+            name: newInventoryItem.name.trim(),
+            category,
+            model,
+            supplier,
+            stock: nextStock,
+            minStock,
+            cost,
+            price,
+            location,
+            status: item.status === "Servicio" ? "Servicio" : nextStock <= minStock ? "Bajo stock" : "Activo",
+          };
+        }),
+      );
+      setEditingProductId(null);
+    } else if (existingItem) {
       setInventory((items) =>
         items.map((item) => {
           if (item.id !== existingItem.id) return item;
@@ -1616,11 +1695,13 @@ export default function App() {
       const nextId = `INV-${String(inventory.length + 1).padStart(3, "0")}`;
       const isService = category.toLowerCase().includes("servicio");
       setInventory((items) => [
+        ...items,
         {
           id: nextId,
           sku,
           name: newInventoryItem.name.trim(),
           category,
+          model,
           supplier,
           stock,
           minStock,
@@ -1630,12 +1711,12 @@ export default function App() {
           location,
           status: isService ? "Servicio" : stock <= minStock ? "Bajo stock" : "Activo",
         },
-        ...items,
       ]);
     }
 
     setInventoryQuery(sku);
-    setNewInventoryItem({ name: "", category: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
+    setNewInventoryItem({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
+    setTimeout(() => inventoryFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
   function addInvoiceLine() {
@@ -1780,7 +1861,10 @@ export default function App() {
     const unitPrice = Number(purchaseLineForm.unitPrice);
     const manualBarcode = purchaseLineForm.barcode?.trim() || "";
     if (!description || Number.isNaN(unitPrice) || unitPrice < 0) return;
-    const barcode = manualBarcode || generateBarcode();
+    const invMatch = manualBarcode
+      ? inventory.find((i) => i.sku.toLowerCase() === manualBarcode.toLowerCase())
+      : inventory.find((i) => i.name.toLowerCase().includes(description.toLowerCase()));
+    const barcode = invMatch?.sku ?? (manualBarcode || "");
     setPurchaseLines((prev) => [...prev, { description, qty, unitPrice, barcode }]);
     setPurchaseLineForm({ description: "", qty: "", unitPrice: "0", barcode: "" });
   }
@@ -1907,8 +1991,7 @@ export default function App() {
   }
 
   async function clearAllData() {
-    if (!window.confirm("Eliminar TODOS los datos de inventario, compras, facturas, clientes, pagos y citas? Esta accion no se puede deshacer.")) return;
-    setInventory([]);
+    if (!window.confirm("Eliminar compras, facturas, clientes, pagos y citas? El inventario no se borrara. Esta accion no se puede deshacer.")) return;
     setPurchases([]);
     setInvoices([]);
     setCustomers([]);
@@ -1916,17 +1999,15 @@ export default function App() {
     setAppointments([]);
     setUsers([]);
     setExamResults([]);
-    localStorage.removeItem("sop-inventory");
-    localStorage.removeItem("sop-purchases");
-    localStorage.removeItem("sop-invoices");
-    localStorage.removeItem("sop-customers");
-    localStorage.removeItem("sop-service-payments");
-    localStorage.removeItem("sop-appointments");
-    localStorage.removeItem("sop-users");
-    localStorage.removeItem("sop-exams");
+    localStorage.setItem("sop-purchases", JSON.stringify([]));
+    localStorage.setItem("sop-invoices", JSON.stringify([]));
+    localStorage.setItem("sop-customers", JSON.stringify([]));
+    localStorage.setItem("sop-service-payments", JSON.stringify([]));
+    localStorage.setItem("sop-appointments", JSON.stringify([]));
+    localStorage.setItem("sop-users", JSON.stringify([]));
+    localStorage.setItem("sop-exams", JSON.stringify([]));
     try {
       await Promise.allSettled([
-        supabase.from("inventory_items").delete().neq("id", ""),
         supabase.from("purchase_orders").delete().neq("id", ""),
         supabase.from("invoices").delete().neq("id", ""),
         supabase.from("customers").delete().neq("id", ""),
@@ -1936,6 +2017,33 @@ export default function App() {
         supabase.from("exam_results").delete().neq("id", ""),
       ]);
     } catch { /* silent */ }
+  }
+
+  function exportAllData() {
+    const data = { inventory, purchases, invoices, customers, servicePayments, appointments, users, examResults, exportedAt: new Date().toISOString() };
+    downloadFile(JSON.stringify(data, null, 2), `optica-backup-${todayDate()}.json`, "application/json");
+  }
+
+  function importAllData(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (data.inventory) setInventory(data.inventory);
+        if (data.purchases) setPurchases(data.purchases);
+        if (data.invoices) setInvoices(data.invoices);
+        if (data.customers) setCustomers(data.customers);
+        if (data.servicePayments) setServicePayments(data.servicePayments);
+        if (data.appointments) setAppointments(data.appointments);
+        if (data.users) setUsers(data.users);
+        if (data.examResults) setExamResults(data.examResults);
+        alert("Datos importados correctamente.");
+      } catch { alert("Error: el archivo no es valido."); }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
   }
 
   function downloadFile(content: string, filename: string, mime: string) {
@@ -2257,31 +2365,58 @@ export default function App() {
       )}
 
       <section className="grid gap-6">
-        <form className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80" onSubmit={addInventoryItem}>
-          <h3 className="text-xl font-black text-slate-950">Registrar producto</h3>
+        <form ref={inventoryFormRef} className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80 scroll-mt-6" onSubmit={addInventoryItem}>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-black text-slate-950">{editingProductId ? "Editar producto" : "Registrar producto"}</h3>
+            {editingProductId && <button type="button" className="text-sm font-bold text-rose-600" onClick={cancelEditInventoryItem}>Cancelar</button>}
+          </div>
           <p className="mt-1 text-sm text-slate-500">Usa el escaner o completa los campos manualmente. Si el SKU ya existe se agregara stock automaticamente.</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
-              Nombre del producto
-              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.name} onChange={(event) => setNewInventoryItem((item) => ({ ...item, name: event.target.value }))} placeholder="Ej. Montura infantil" />
-            </label>
+            <div className="grid gap-2">
+              <label className="text-sm font-bold text-slate-700">Nombre del producto</label>
+              <input list="name-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.name} onChange={(event) => {
+                const name = event.target.value;
+                if (!name) {
+                  setNewInventoryItem({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
+                  setEditingProductId(null);
+                  return;
+                }
+                const match = inventory.find((i) => i.name === name);
+                if (match) {
+                  setEditingProductId(match.id);
+                  setNewInventoryItem({ name, category: match.category, model: match.model, sku: match.sku, stock: String(match.stock), minStock: String(match.minStock), cost: String(match.cost), price: String(match.price), supplier: match.supplier, location: match.location });
+                } else {
+                  setEditingProductId(null);
+                  setNewInventoryItem((prev) => ({ ...prev, name, sku: prev.sku || generateSkuFromName(name) }));
+                }
+              }} placeholder="Buscar producto existente o escribir nuevo" />
+            </div>
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               SKU / codigo de barras
               <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.sku} onChange={(event) => setNewInventoryItem((item) => ({ ...item, sku: event.target.value }))} placeholder="Ej. MON-001 o codigo de barras" />
             </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Categoria
+              <input list="cat-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.category} onChange={(event) => setNewInventoryItem((item) => ({ ...item, category: event.target.value }))} placeholder="Ej. Monturas, Lentes" />
+            </label>
             <div className="grid gap-2">
-              <label className="text-sm font-bold text-slate-700">Categoria</label>
-              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.category} onChange={(event) => setNewInventoryItem((item) => ({ ...item, category: event.target.value }))} placeholder="Nueva categoria" />
-              {[...new Set(inventory.map((i) => i.category))].filter(Boolean).length > 0 && (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="text-xs text-slate-400">Existentes:</span>
-                  {[...new Set(inventory.map((i) => i.category))].filter(Boolean).map((cat) => (
-                    <button key={cat} type="button" className="text-xs font-semibold text-cyan-700 underline underline-offset-2 hover:text-cyan-900" onClick={() => setNewInventoryItem((item) => ({ ...item, category: cat }))}>
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <label className="text-sm font-bold text-slate-700">Modelo</label>
+              <input list="model-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.model} onChange={(event) => {
+                const mod = event.target.value;
+                if (!mod) {
+                  setNewInventoryItem({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
+                  setEditingProductId(null);
+                  return;
+                }
+                const match = inventory.find((i) => i.model === mod);
+                if (match) {
+                  setEditingProductId(match.id);
+                  setNewInventoryItem({ name: match.name, category: match.category, model: mod, sku: match.sku, stock: String(match.stock), minStock: String(match.minStock), cost: String(match.cost), price: String(match.price), supplier: match.supplier, location: match.location });
+                } else {
+                  setEditingProductId(null);
+                  setNewInventoryItem((prev) => ({ ...prev, model: mod }));
+                }
+              }} placeholder="Buscar modelo existente o escribir nuevo" />
             </div>
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               Proveedor
@@ -2297,7 +2432,7 @@ export default function App() {
             </label>
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               Ubicacion
-              <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.location} onChange={(event) => setNewInventoryItem((item) => ({ ...item, location: event.target.value }))} placeholder="Ej. Vitrina A, Deposito" />
+              <input list="location-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.location} onChange={(event) => setNewInventoryItem((item) => ({ ...item, location: event.target.value }))} placeholder="Ej. Vitrina A, Deposito" />
             </label>
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               Precio de compra (costo)
@@ -2307,28 +2442,59 @@ export default function App() {
               Precio de venta
               <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.price} onChange={(event) => setNewInventoryItem((item) => ({ ...item, price: event.target.value }))} placeholder="B/. 0.00" />
             </label>
-            <div className="sm:col-span-2"><button className="w-full rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20">Guardar producto</button></div>
+            <div className="sm:col-span-2"><button className="w-full rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20">{editingProductId ? "Actualizar producto" : "Guardar producto"}</button></div>
           </div>
+          <datalist id="name-list">
+            {[...new Set(inventory.map((i) => i.name))].filter(Boolean).map((n) => (
+              <option key={n} value={n} />
+            ))}
+          </datalist>
+          <datalist id="cat-list">
+            <option value="Metal Hombre" />
+            <option value="Metal Mujer" />
+            <option value="Pasta" />
+          </datalist>
+          <datalist id="model-list">
+            {[...new Set(inventory.map((i) => i.model))].filter(Boolean).map((mod) => (
+              <option key={mod} value={mod} />
+            ))}
+          </datalist>
+          <datalist id="location-list">
+            <option value="Vitrina" />
+            <option value="Repisa 1" />
+            <option value="Repisa 2" />
+            <option value="Repisa 3" />
+            <option value="Repisa 4" />
+            <option value="Repisa 5" />
+            <option value="Repisa 6" />
+            <option value="Repisa 7" />
+            <option value="Repisa 8" />
+            <option value="Repisa 9" />
+            <option value="Repisa 10" />
+            {[...new Set(inventory.map((i) => i.location))].filter((loc) => loc && !["laboratorio","mostrador","depósito","deposito","vitrina a","vitrina b","consultorio","gabinete","vitrina 1","vitrina  1"].includes(loc.toLowerCase())).map((loc) => (
+              <option key={loc} value={loc} />
+            ))}
+          </datalist>
         </form>
 
         <div className="rounded-[2rem] bg-white/80 p-5 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
           <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
             <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={inventoryQuery} onChange={(event) => setInventoryQuery(event.target.value)} placeholder="Buscar por nombre, SKU o proveedor" />
             <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={inventoryCategory} onChange={(event) => setInventoryCategory(event.target.value)}>
-              {["Todas", ...new Set(inventory.map((item) => item.category))].map((category) => <option key={category}>{category}</option>)}
+              {["Todas", "Metal Hombre", "Metal Mujer", "Pasta"].map((category) => <option key={category}>{category}</option>)}
             </select>
           </div>
 
           <div className="mt-5 grid gap-4">
             {visibleInventory.map((item) => (
-              <div key={item.id} className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
+              <div key={item.id} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 cursor-pointer transition hover:shadow-md" onClick={() => { startEditInventoryItem(item); inventoryFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-lg font-black text-slate-950">{item.name}</p>
                       <StatusBadge status={item.status} />
                     </div>
-                    <p className="mt-1 text-sm text-slate-400">{item.category}{item.location ? ` · ${item.location}` : ""}</p>
+                    <p className="mt-1 text-sm text-slate-400">{item.category}{item.model ? ` / ${item.model}` : ""}{item.location ? ` · ${item.location}` : ""}</p>
                   </div>
                   <p className="text-2xl font-black text-slate-950">{formatMoney(item.price)}</p>
                 </div>
@@ -2338,9 +2504,11 @@ export default function App() {
                   <div><span className="font-semibold text-slate-500">Stock:</span> <span className="font-black text-slate-950">{item.stock}</span> <span className="text-slate-400">/ min {item.minStock}</span></div>
                   <div><span className="font-semibold text-slate-500">Costo:</span> <span className="text-slate-700">{formatMoney(item.cost)}</span></div>
                 </div>
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 font-black text-slate-900" onClick={() => updateStock(item.id, -1)}>-</button>
                   <button className="grid h-9 w-9 place-items-center rounded-full bg-cyan-600 font-black text-white" onClick={() => updateStock(item.id, 1)}>+</button>
+                  <button className="ml-auto rounded-full bg-amber-500 px-4 py-2 text-xs font-black text-white shadow-md" onClick={() => startEditInventoryItem(item)}>Editar</button>
+                  <button className="rounded-full bg-rose-600 px-4 py-2 text-xs font-black text-white shadow-md" onClick={() => deleteInventoryItem(item.id)}>Eliminar</button>
                 </div>
               </div>
             ))}
@@ -2379,24 +2547,37 @@ export default function App() {
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="mb-3 text-sm font-bold text-slate-700">Lineas de compra</p>
               {purchaseLines.length === 0 && <p className="text-sm text-slate-400">Agrega productos a la compra.</p>}
-              {purchaseLines.map((line, index) => (
-                <div key={index} className="mb-2 rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <span className="font-medium text-slate-700">{line.description}</span>
-                      {line.barcode && <div className="mt-0.5 font-mono text-xs font-bold text-cyan-700">Cod: {line.barcode}</div>}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      <span className="text-nowrap text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
-                      <span className="font-bold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
-                      <button type="button" onClick={() => removePurchaseLine(index)} className="text-rose-500 hover:text-rose-700">&times;</button>
+              {purchaseLines.map((line, index) => {
+                const invItem = inventory.find((i) => i.sku === line.barcode);
+                return (
+                  <div key={index} className="mb-2 rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0 flex-1">
+                        <span className="font-medium text-slate-700">{line.description}</span>
+                        {invItem && <div className="mt-0.5 text-xs text-slate-400">{invItem.category}{invItem.model ? ` / ${invItem.model}` : ""}</div>}
+                        {line.barcode && <div className="font-mono text-xs font-bold text-cyan-700">Cod: {line.barcode}</div>}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <span className="text-nowrap text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
+                        <span className="font-bold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
+                        <button type="button" onClick={() => removePurchaseLine(index)} className="text-rose-500 hover:text-rose-700">&times;</button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="mt-3 grid grid-cols-[1fr_140px_70px_100px_40px] gap-2">
                 <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-cyan-500" value={purchaseLineForm.description} onChange={(e) => setPurchaseLineForm((f) => ({ ...f, description: e.target.value }))} placeholder="Producto" />
-                <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono outline-none focus:border-cyan-500" value={purchaseLineForm.barcode} onChange={(e) => setPurchaseLineForm((f) => ({ ...f, barcode: e.target.value }))} placeholder="Cod. barra (opcional)" />
+                <input className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono outline-none focus:border-cyan-500" value={purchaseLineForm.barcode} onChange={(e) => {
+                  const code = e.target.value;
+                  const match = inventory.find((item) => item.sku.toLowerCase() === code.toLowerCase());
+                  setPurchaseLineForm((f) => ({
+                    ...f,
+                    barcode: code,
+                    description: match?.name ?? f.description,
+                    unitPrice: match ? String(match.price) : f.unitPrice,
+                  }));
+                }} placeholder="Cod. barra (opcional)" />
                 <input type="number" min="1" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-cyan-500" value={purchaseLineForm.qty} onChange={(e) => setPurchaseLineForm((f) => ({ ...f, qty: e.target.value }))} placeholder="Cant." />
                 <input type="number" min="0" step="0.01" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-cyan-500" value={purchaseLineForm.unitPrice} onChange={(e) => setPurchaseLineForm((f) => ({ ...f, unitPrice: e.target.value }))} placeholder="Precio" />
                 <button type="button" onClick={addPurchaseLine} className="rounded-xl bg-cyan-600 text-sm font-black text-white">+</button>
@@ -2451,16 +2632,20 @@ export default function App() {
                 </div>
               </div>
               <div className="mt-3 space-y-1 border-t border-slate-100 pt-3">
-                {(purchase.lines || []).map((line, i) => (
-                  <div key={i} className="flex items-center justify-between gap-2 text-sm">
-                    <div className="min-w-0 flex-1">
-                      <span className="text-slate-700">{line.description}</span>
-                      {line.barcode && <div className="font-mono text-xs font-bold text-cyan-600">{line.barcode}</div>}
+                {(purchase.lines || []).map((line, i) => {
+                  const invItem = inventory.find((inv) => inv.sku === line.barcode);
+                  return (
+                    <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-slate-700">{line.description}</span>
+                        {invItem && <div className="text-xs text-slate-400">{invItem.category}{invItem.model ? ` / ${invItem.model}` : ""}</div>}
+                        {line.barcode && <div className="font-mono text-xs font-bold text-cyan-600">{line.barcode}</div>}
+                      </div>
+                      <span className="shrink-0 text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
+                      <span className="shrink-0 font-semibold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
                     </div>
-                    <span className="shrink-0 text-slate-500">{line.qty} x {formatMoney(line.unitPrice)}</span>
-                    <span className="shrink-0 font-semibold text-slate-900">{formatMoney(line.qty * line.unitPrice)}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button className="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700" onClick={() => updatePurchaseStatus(purchase.id, "Recibida")}>Marcar recibida</button>
@@ -3397,17 +3582,32 @@ export default function App() {
             <span className={cn("grid h-7 w-7 place-items-center rounded-full text-xs font-black", darkMode ? "bg-slate-700 text-slate-300" : "bg-slate-200 text-slate-700")}>{darkMode ? "O" : "C"}</span>
             {darkMode ? "Modo claro" : "Modo oscuro"}
           </button>
-          <button className="mt-2 flex w-full items-center gap-3 rounded-3xl bg-rose-600 px-4 py-3 text-left text-sm font-black text-white shadow-lg shadow-rose-600/20" onClick={clearAllData}>
-            <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 text-xs font-black text-white">X</span>
-            Limpiar datos de prueba
-          </button>
+          {displayRole === "Super Admin" && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button className="flex items-center justify-center gap-2 rounded-3xl bg-emerald-600 px-3 py-3 text-xs font-black text-white shadow-lg shadow-emerald-600/20" onClick={exportAllData}>
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-white/20 text-[10px] font-black text-white">↓</span>
+                Exportar
+              </button>
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-3xl bg-blue-600 px-3 py-3 text-xs font-black text-white shadow-lg shadow-blue-600/20">
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-white/20 text-[10px] font-black text-white">↑</span>
+                Importar
+                <input type="file" accept=".json" className="hidden" onChange={importAllData} />
+              </label>
+            </div>
+          )}
+          {displayRole === "Super Admin" && (
+            <button className="mt-2 flex w-full items-center gap-3 rounded-3xl bg-rose-600 px-4 py-3 text-left text-sm font-black text-white shadow-lg shadow-rose-600/20" onClick={clearAllData}>
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 text-xs font-black text-white">X</span>
+              Limpiar datos de prueba
+            </button>
+          )}
         </aside>
 
         <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
           <header className={cn("reveal-up mb-8 flex flex-col gap-4 rounded-[2rem] p-4 shadow-lg md:flex-row md:items-center md:justify-between", darkMode ? "bg-slate-900 shadow-black/30 ring-1 ring-slate-700/80 backdrop-blur" : "bg-white/75 shadow-slate-200/50 ring-1 ring-slate-200/80 backdrop-blur")}>
             <div>
               <p className="text-xs font-black uppercase tracking-[0.26em] text-cyan-700">{displayRole}</p>
-              <p className={cn("mt-1 text-lg font-black", darkMode ? "text-white" : "text-slate-950")}>{isAdminRole(displayRole) ? business.owner : activeClient?.name ?? "Cliente"}</p>
+              <p className={cn("mt-1 text-lg font-black", darkMode ? "text-white" : "text-slate-950")}>{isAdminRole(displayRole) ? (users.find((u) => u.role === displayRole)?.name ?? displayRole) : activeClient?.name ?? "Cliente"}</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <p className={cn("text-sm font-black italic", darkMode ? "text-white/90" : "text-slate-500")}>Cuidamos tu salud visual con profesionalismo y calidez. Porque ver bien es vivir mejor.</p>
