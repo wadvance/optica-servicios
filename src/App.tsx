@@ -2524,9 +2524,10 @@ export default function App() {
             ))}
           </datalist>
           <datalist id="cat-list">
-            {[...new Set(inventory.map((i) => i.category))].filter(Boolean).map((cat) => (
-              <option key={cat} value={cat} />
-            ))}
+            <option value="Metal Hombre" />
+            <option value="Metal Mujer" />
+            <option value="Pasta Hombre" />
+            <option value="Pasta Mujer" />
           </datalist>
           <datalist id="model-list">
             {[...new Set(inventory.map((i) => i.model))].filter(Boolean).map((mod) => (
@@ -2555,7 +2556,7 @@ export default function App() {
           <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
             <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={inventoryQuery} onChange={(event) => setInventoryQuery(event.target.value)} placeholder="Buscar por nombre, SKU o proveedor" />
             <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={inventoryCategory} onChange={(event) => setInventoryCategory(event.target.value)}>
-              {["Todas", ...new Set(inventory.map((i) => i.category).filter(Boolean))].map((category) => <option key={category}>{category}</option>)}
+              {["Todas", "Metal Hombre", "Metal Mujer", "Pasta Hombre", "Pasta Mujer"].map((category) => <option key={category}>{category}</option>)}
             </select>
           </div>
 
