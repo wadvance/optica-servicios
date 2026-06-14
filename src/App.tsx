@@ -2796,17 +2796,24 @@ export default function App() {
       </div>
       <div className="py-5">
         <div className="space-y-3">
+          <div className="hidden grid-cols-[2fr_60px_80px_100px_1fr_80px] gap-2 rounded-2xl bg-slate-100 px-3 py-2 text-xs font-bold uppercase text-slate-500 sm:grid">
+            <span>Descripcion</span>
+            <span>Cant.</span>
+            <span>P. Vidrio</span>
+            <span>Tipo</span>
+            <span>Especificaciones</span>
+            <span>Total</span>
+          </div>
           {selectedInvoice.lines.map((line, index) => (
-            <div key={`${line.itemId}-${index}`} className="grid grid-cols-[1fr_auto] gap-3 rounded-2xl bg-slate-50 p-3 text-sm">
+            <div key={`${line.itemId}-${index}`} className="grid grid-cols-[2fr_60px_80px_100px_1fr_80px] gap-2 rounded-2xl bg-slate-50 p-3 text-sm">
               <div>
                 <p className="font-black text-slate-900">{line.description}</p>
-                <p className="text-slate-500">
-                  Cant. {line.qty} · {formatMoney(line.unitPrice)} · ITBMS {(line.taxRate * 100).toFixed(0)}%
-                  {line.glassPrice !== undefined && <> · Vidrio: {formatMoney(line.glassPrice)}</>}
-                  {line.lensType && <> · {line.lensType}</>}
-                </p>
-                {line.specifications && <p className="mt-0.5 text-xs text-slate-400">{line.specifications}</p>}
+                <p className="text-xs text-slate-400">ITBMS {(line.taxRate * 100).toFixed(0)}%</p>
               </div>
+              <p className="text-slate-700">{line.qty}</p>
+              <p className="text-slate-700">{line.glassPrice !== undefined ? formatMoney(line.glassPrice) : "-"}</p>
+              <p className="text-slate-700">{line.lensType || "-"}</p>
+              <p className="text-xs text-slate-400 truncate">{line.specifications || "-"}</p>
               <p className="font-black text-slate-950">{formatMoney(lineSubtotal(line) + lineTax(line))}</p>
             </div>
           ))}
@@ -2903,22 +2910,32 @@ export default function App() {
               {draftLines.length === 0 ? (
                 <div className="p-5"><EmptyState title="Factura sin lineas" subtitle="Agrega productos o servicios para calcular el total." /></div>
               ) : (
-                <div className="divide-y divide-slate-200 bg-white">
-                  {draftLines.map((line, index) => (
-                    <div key={`${line.itemId}-${index}`} className="grid gap-2 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center">
-                      <div>
-                        <p className="font-black text-slate-950">{line.description}</p>
-                        <p className="text-sm text-slate-500">
-                          Cant. {line.qty} · ITBMS {(line.taxRate * 100).toFixed(0)}%
-                          {line.glassPrice !== undefined && <> · Vidrio: {formatMoney(line.glassPrice)}</>}
-                          {line.lensType && <> · {line.lensType}</>}
-                        </p>
-                        {line.specifications && <p className="mt-0.5 text-xs text-slate-400">{line.specifications}</p>}
+                <div className="min-w-[600px]">
+                  <div className="hidden grid-cols-[2fr_80px_100px_120px_1fr_100px_80px] gap-3 bg-slate-100 px-4 py-2 text-xs font-bold uppercase text-slate-500 sm:grid">
+                    <span>Descripcion</span>
+                    <span>Cant.</span>
+                    <span>P. Vidrio</span>
+                    <span>Tipo lentes</span>
+                    <span>Especificaciones</span>
+                    <span>Total</span>
+                    <span></span>
+                  </div>
+                  <div className="divide-y divide-slate-200 bg-white">
+                    {draftLines.map((line, index) => (
+                      <div key={`${line.itemId}-${index}`} className="grid gap-2 p-4 sm:grid-cols-[2fr_80px_100px_120px_1fr_100px_80px] sm:items-center">
+                        <div>
+                          <p className="font-black text-slate-950">{line.description}</p>
+                          <p className="text-xs text-slate-400">ITBMS {(line.taxRate * 100).toFixed(0)}%</p>
+                        </div>
+                        <p className="text-sm text-slate-700">{line.qty}</p>
+                        <p className="text-sm text-slate-700">{line.glassPrice !== undefined ? formatMoney(line.glassPrice) : "-"}</p>
+                        <p className="text-sm text-slate-700">{line.lensType || "-"}</p>
+                        <p className="text-xs text-slate-400">{line.specifications || "-"}</p>
+                        <p className="font-black text-slate-950">{formatMoney(lineSubtotal(line) + lineTax(line))}</p>
+                        <button className="rounded-full bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600" onClick={() => removeInvoiceLine(index)}>Quitar</button>
                       </div>
-                      <p className="font-black text-slate-950">{formatMoney(lineSubtotal(line) + lineTax(line))}</p>
-                      <button className="rounded-full bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600" onClick={() => removeInvoiceLine(index)}>Quitar</button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
