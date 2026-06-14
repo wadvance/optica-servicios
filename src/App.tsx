@@ -617,7 +617,7 @@ function todayDate() {
 }
 
 function lineSubtotal(line: InvoiceLine) {
-  return line.qty * line.unitPrice;
+  return line.qty * (line.unitPrice + (line.glassPrice ?? 0));
 }
 
 function lineTax(line: InvoiceLine) {
