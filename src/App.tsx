@@ -90,6 +90,9 @@ export type InvoiceLine = {
   qty: number;
   unitPrice: number;
   taxRate: number;
+  glassPrice?: number;
+  lensType?: string;
+  specifications?: string;
 };
 
 export type Invoice = {
@@ -546,7 +549,7 @@ const invoicesSeed: Invoice[] = [
     cufe: "FEPA260518SOP00021A9B8C7",
     cafe: "CAFE-00021-SOP",
     lines: [
-      { itemId: "INV-003", description: "Lente progresivo antirreflejo", qty: 1, unitPrice: 145, taxRate: PANAMA_TAX_RATE },
+      { itemId: "INV-003", description: "Lente progresivo antirreflejo", qty: 1, unitPrice: 145, taxRate: PANAMA_TAX_RATE, glassPrice: 18.50, lensType: "Progresivo", specifications: "Antirreflejo, filtro azul, alto indice 1.67" },
       { itemId: "INV-001", description: "Montura acetato profesional", qty: 1, unitPrice: 75, taxRate: PANAMA_TAX_RATE },
       { itemId: "INV-007", description: "Examen visual completo", qty: 1, unitPrice: 30, taxRate: 0 },
     ],
@@ -1169,6 +1172,9 @@ export default function App() {
   const [invoiceCustomerPhone, setInvoiceCustomerPhone] = useState("");
   const [invoiceCustomerAddress, setInvoiceCustomerAddress] = useState("");
   const [invoiceQty, setInvoiceQty] = useState("");
+  const [invoiceGlassPrice, setInvoiceGlassPrice] = useState("");
+  const [invoiceLensType, setInvoiceLensType] = useState("");
+  const [invoiceSpecifications, setInvoiceSpecifications] = useState("");
   const [invoicePayment, setInvoicePayment] = useState("Efectivo");
   const [applyItbms, setApplyItbms] = useState(true);
   const [draftLines, setDraftLines] = useState<InvoiceLine[]>([]);
@@ -1804,9 +1810,15 @@ export default function App() {
         qty: qty || 1,
         unitPrice: item.price,
         taxRate: applyItbms ? item.taxRate : 0,
+        glassPrice: Number(invoiceGlassPrice) || undefined,
+        lensType: invoiceLensType.trim() || undefined,
+        specifications: invoiceSpecifications.trim() || undefined,
       },
     ]);
     setInvoiceQty("");
+    setInvoiceGlassPrice("");
+    setInvoiceLensType("");
+    setInvoiceSpecifications("");
   }
 
   function removeInvoiceLine(index: number) {
@@ -2245,13 +2257,16 @@ export default function App() {
 
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(9);
-    const colW = [80, 20, 25, 25, 25];
-    const cols = [margin, margin + colW[0], margin + colW[0] + colW[1], margin + colW[0] + colW[1] + colW[2], margin + colW[0] + colW[1] + colW[2] + colW[3]];
+    const colW = [60, 15, 20, 20, 20, 20, 20];
+    const cols = [margin];
+    for (let i = 1; i < colW.length; i++) cols.push(cols[i - 1] + colW[i - 1]);
     pdf.text("Descripcion", cols[0], y);
     pdf.text("Cant.", cols[1], y);
     pdf.text("P. Unit.", cols[2], y);
-    pdf.text("ITBMS", cols[3], y);
-    pdf.text("Total", cols[4], y);
+    pdf.text("Vidrio", cols[3], y);
+    pdf.text("Tipo", cols[4], y);
+    pdf.text("ITBMS", cols[5], y);
+    pdf.text("Total", cols[6], y);
     y += 5;
     pdf.line(margin, y, pageW - margin, y);
     y += 5;
@@ -2264,8 +2279,18 @@ export default function App() {
       pdf.text(line.description, cols[0], y);
       pdf.text(String(line.qty), cols[1], y);
       pdf.text(formatMoney(line.unitPrice), cols[2], y);
-      pdf.text(formatMoney(tax), cols[3], y);
-      pdf.text(formatMoney(sub + tax), cols[4], y);
+      pdf.text(line.glassPrice !== undefined ? formatMoney(line.glassPrice) : "-", cols[3], y);
+      pdf.text(line.lensType || "-", cols[4], y);
+      pdf.text(formatMoney(tax), cols[5], y);
+      pdf.text(formatMoney(sub + tax), cols[6], y);
+      if (line.specifications) {
+        y += 5;
+        pdf.setFont("helvetica", "italic");
+        pdf.setFontSize(8);
+        pdf.text(line.specifications, cols[0], y);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(9);
+      }
       y += 5;
     }
     y += 5;
@@ -2775,7 +2800,12 @@ export default function App() {
             <div key={`${line.itemId}-${index}`} className="grid grid-cols-[1fr_auto] gap-3 rounded-2xl bg-slate-50 p-3 text-sm">
               <div>
                 <p className="font-black text-slate-900">{line.description}</p>
-                <p className="text-slate-500">Cant. {line.qty} · {formatMoney(line.unitPrice)} · ITBMS {(line.taxRate * 100).toFixed(0)}%</p>
+                <p className="text-slate-500">
+                  Cant. {line.qty} · {formatMoney(line.unitPrice)} · ITBMS {(line.taxRate * 100).toFixed(0)}%
+                  {line.glassPrice !== undefined && <> · Vidrio: {formatMoney(line.glassPrice)}</>}
+                  {line.lensType && <> · {line.lensType}</>}
+                </p>
+                {line.specifications && <p className="mt-0.5 text-xs text-slate-400">{line.specifications}</p>}
               </div>
               <p className="font-black text-slate-950">{formatMoney(lineSubtotal(line) + lineTax(line))}</p>
             </div>
@@ -2844,8 +2874,29 @@ export default function App() {
                 Cant.
                 <input type="number" min="1" step="1" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceQty} onChange={(event) => setInvoiceQty(event.target.value)} />
               </label>
-              <button className={cn("rounded-2xl px-5 py-3 font-black text-white shadow-lg transition", applyItbms ? "bg-amber-600 shadow-amber-600/20" : "bg-slate-400 shadow-slate-400/20")} onClick={() => setApplyItbms(!applyItbms)}>ITBMS {applyItbms ? "ON" : "OFF"}</button>
-              <button className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20" onClick={addInvoiceLine}>Agregar</button>
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Precio vidrio
+                <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceGlassPrice} onChange={(event) => setInvoiceGlassPrice(event.target.value)} placeholder="B/. 0.00" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Tipo lentes
+                <input list="lens-type-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceLensType} onChange={(event) => setInvoiceLensType(event.target.value)} placeholder="Ej. Progresivo, Monofocal" />
+                <datalist id="lens-type-list">
+                  <option value="Progresivo" />
+                  <option value="Monofocal" />
+                  <option value="Bifocal" />
+                  <option value="Ocupacional" />
+                  <option value="Lentes de contacto" />
+                </datalist>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-slate-700 sm:col-span-2">
+                Especificaciones
+                <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceSpecifications} onChange={(event) => setInvoiceSpecifications(event.target.value)} placeholder="Ej. Antirreflejo, filtro azul, alto indice 1.67" />
+              </label>
+              <div className="flex flex-wrap gap-2 sm:col-span-2">
+                <button className={cn("rounded-2xl px-5 py-3 font-black text-white shadow-lg transition", applyItbms ? "bg-amber-600 shadow-amber-600/20" : "bg-slate-400 shadow-slate-400/20")} onClick={() => setApplyItbms(!applyItbms)}>ITBMS {applyItbms ? "ON" : "OFF"}</button>
+                <button className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white shadow-lg shadow-cyan-600/20" onClick={addInvoiceLine}>Agregar</button>
+              </div>
             </div>
 
             <div className="mt-5 overflow-hidden rounded-[1.5rem] border border-slate-200">
@@ -2854,10 +2905,15 @@ export default function App() {
               ) : (
                 <div className="divide-y divide-slate-200 bg-white">
                   {draftLines.map((line, index) => (
-                    <div key={`${line.itemId}-${index}`} className="grid gap-3 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+                    <div key={`${line.itemId}-${index}`} className="grid gap-2 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center">
                       <div>
                         <p className="font-black text-slate-950">{line.description}</p>
-                        <p className="text-sm text-slate-500">Cant. {line.qty} · ITBMS {(line.taxRate * 100).toFixed(0)}%</p>
+                        <p className="text-sm text-slate-500">
+                          Cant. {line.qty} · ITBMS {(line.taxRate * 100).toFixed(0)}%
+                          {line.glassPrice !== undefined && <> · Vidrio: {formatMoney(line.glassPrice)}</>}
+                          {line.lensType && <> · {line.lensType}</>}
+                        </p>
+                        {line.specifications && <p className="mt-0.5 text-xs text-slate-400">{line.specifications}</p>}
                       </div>
                       <p className="font-black text-slate-950">{formatMoney(lineSubtotal(line) + lineTax(line))}</p>
                       <button className="rounded-full bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600" onClick={() => removeInvoiceLine(index)}>Quitar</button>
