@@ -1188,6 +1188,7 @@ export default function App() {
   const [purchaseQuery, setPurchaseQuery] = useState("");
   const [purchaseStatusFilter, setPurchaseStatusFilter] = useState("Todas");
   const [invoiceQuery, setInvoiceQuery] = useState("");
+  const [customerQuery, setCustomerQuery] = useState("");
   const [serviceForm, setServiceForm] = useState({ service: "", provider: "", category: "Servicios publicos" as ServiceCategory, dueDate: "2026-06-30", amount: "0" });
   const [customerForm, setCustomerForm] = useState({ name: "", document: "", dv: "", email: "", phone: "", address: "", prescription: "" });
   const [salesPeriod, setSalesPeriod] = useState<"dia" | "semana" | "mes">("dia");
@@ -3212,8 +3213,13 @@ export default function App() {
 
           <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
             <h3 className="text-xl font-black text-slate-950">Clientes</h3>
+            <input className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={customerQuery} onChange={(event) => setCustomerQuery(event.target.value)} placeholder="Buscar por nombre o cedula / RUC" />
             <div className="mt-4 grid gap-3">
-              {customers.map((customer) => (
+              {customers.filter((c) => {
+                const q = customerQuery.toLowerCase().trim();
+                if (!q) return true;
+                return c.name.toLowerCase().includes(q) || c.document.toLowerCase().includes(q);
+              }).map((customer) => (
                 <article key={customer.id} className="rounded-3xl bg-slate-50 p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex-1">
@@ -3234,6 +3240,12 @@ export default function App() {
                   </div>
                 </article>
               ))}
+              {customerQuery.trim() && customers.filter((c) => {
+                const q = customerQuery.toLowerCase().trim();
+                return c.name.toLowerCase().includes(q) || c.document.toLowerCase().includes(q);
+              }).length === 0 && (
+                <p className="py-4 text-center text-sm text-slate-400">No se encontraron clientes con ese nombre o cedula.</p>
+              )}
             </div>
           </div>
         </div>
