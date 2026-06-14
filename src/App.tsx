@@ -933,6 +933,18 @@ export default function App() {
     });
   }, []);
 
+  // Clean trailing . and * from product names on load
+  useEffect(() => {
+    setInventory((prev) => {
+      const cleaned = prev.map((item) => ({
+        ...item,
+        name: item.name.replace(/[.*]+$/, "").trim(),
+      }));
+      const changed = cleaned.some((item, i) => item.name !== prev[i].name);
+      return changed ? cleaned : prev;
+    });
+  }, []);
+
   useEffect(() => {
     setPurchases((prev) => prev.map((p) => {
       if (!p.lines && typeof (p as any).items === "number") {
@@ -1695,21 +1707,32 @@ export default function App() {
 
   function addInventoryItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const name = newInventoryItem.name.trim().replace(/[.*]+$/, "");
     const sku = newInventoryItem.sku.trim();
     const stock = Number(newInventoryItem.stock) || 0;
     const minStock = Number(newInventoryItem.minStock) || 0;
     const price = Number(newInventoryItem.price);
     const cost = Number(newInventoryItem.cost) || Math.round(price * 0.45 * 100) / 100;
-    const existingItem = sku ? inventory.find((item) => item.sku.toLowerCase() === sku.toLowerCase()) : undefined;
-
-    if (!sku || Number.isNaN(price) || !newInventoryItem.name.trim()) {
-      return;
-    }
-
     const category = newInventoryItem.category.trim() || "General";
     const model = newInventoryItem.model.trim();
     const supplier = newInventoryItem.supplier.trim() || "Proveedor por asignar";
     const location = newInventoryItem.location.trim() || "Deposito";
+
+    if (!sku || Number.isNaN(price) || !name) {
+      return;
+    }
+
+    const existingByModel = model ? inventory.find((item) => item.model.toLowerCase() === model.toLowerCase() && item.id !== editingProductId) : undefined;
+    if (existingByModel) {
+      alert(`El modelo "${model}" ya existe en "${existingByModel.name}". Cada modelo debe ser unico.`);
+      return;
+    }
+
+    const existingBySku = inventory.find((item) => item.sku.toLowerCase() === sku.toLowerCase() && item.id !== editingProductId);
+    if (existingBySku) {
+      alert(`El SKU "${sku}" ya existe en "${existingBySku.name}". Cada SKU debe ser unico.`);
+      return;
+    }
 
     if (editingProductId) {
       setInventory((items) => {
@@ -1719,7 +1742,7 @@ export default function App() {
           return {
             ...item,
             sku,
-            name: newInventoryItem.name.trim(),
+            name,
             category,
             model,
             supplier,
@@ -1735,16 +1758,6 @@ export default function App() {
         return next;
       });
       setEditingProductId(null);
-    } else if (existingItem) {
-      setInventory((items) => {
-        const next = items.map((item) => {
-          if (item.id !== existingItem.id) return item;
-          const nextStock = item.stock + stock;
-          return { ...item, stock: nextStock, status: item.status === "Servicio" ? "Servicio" : nextStock <= item.minStock ? "Bajo stock" : "Activo" };
-        });
-        localStorage.setItem("sop-inventory", JSON.stringify(next));
-        return next;
-      });
     } else {
       const nextId = `INV-${String(inventory.length + 1).padStart(3, "0")}`;
       const isService = category.toLowerCase().includes("servicio");
@@ -1754,7 +1767,7 @@ export default function App() {
           {
             id: nextId,
             sku,
-            name: newInventoryItem.name.trim(),
+            name,
             category,
             model,
             supplier,
@@ -2444,25 +2457,19 @@ export default function App() {
             <h3 className="text-xl font-black text-slate-950">{editingProductId ? "Editar producto" : "Registrar producto"}</h3>
             {editingProductId && <button type="button" className="text-sm font-bold text-rose-600" onClick={cancelEditInventoryItem}>Cancelar</button>}
           </div>
-          <p className="mt-1 text-sm text-slate-500">Usa el escaner o completa los campos manualmente. Si el SKU ya existe se agregara stock automaticamente.</p>
+           <p className="mt-1 text-sm text-slate-500">Usa el escaner o completa los campos manualmente. El modelo y SKU deben ser unicos.</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <label className="text-sm font-bold text-slate-700">Nombre del producto</label>
               <input list="name-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.name} onChange={(event) => {
-                const name = event.target.value;
+                const name = event.target.value.replace(/[.*]+$/, "");
                 if (!name) {
                   setNewInventoryItem({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
                   setEditingProductId(null);
                   return;
                 }
-                const match = inventory.find((i) => i.name === name);
-                if (match) {
-                  setEditingProductId(match.id);
-                  setNewInventoryItem({ name, category: match.category, model: match.model, sku: match.sku, stock: String(match.stock), minStock: String(match.minStock), cost: String(match.cost), price: String(match.price), supplier: match.supplier, location: match.location });
-                } else {
-                  setEditingProductId(null);
-                  setNewInventoryItem({ name, category: "", model: "", sku: generateSkuFromName(name), stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
-                }
+                setEditingProductId(null);
+                setNewInventoryItem((prev) => ({ ...prev, name, sku: generateSkuFromName(name) }));
               }} placeholder="Buscar producto existente o escribir nuevo" />
             </div>
             <label className="grid gap-2 text-sm font-bold text-slate-700">
