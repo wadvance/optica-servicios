@@ -8,7 +8,7 @@ import ChatBot from "./components/ChatBot";
 
 type Role = "Super Admin" | "Administrador" | "Cliente";
 const isAdminRole = (r: Role) => r === "Super Admin" || r === "Administrador";
-type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "historias" | "avances" | "servicios" | "usuarios" | "cumplimiento" | "ia" | "resultados";
+type AdminView = "panel" | "inventario" | "compras" | "facturacion" | "historias" | "servicios" | "usuarios" | "ia" | "resultados";
 type ClientView = "portal" | "mis-facturas" | "recetas" | "citas" | "resultados" | "ia";
 type View = AdminView | ClientView;
 
@@ -178,10 +178,8 @@ const adminNav: { id: AdminView; label: string; description: string }[] = [
   { id: "compras", label: "Compras", description: "Proveedores y credito fiscal" },
   { id: "facturacion", label: "Facturacion", description: "Cliente, CUFE y CAFE" },
   { id: "historias", label: "Historias Clinicas", description: "Examenes, recetas y facturas" },
-  { id: "avances", label: "Avances", description: "Tecnologia en lentes y gafas" },
   { id: "servicios", label: "Pagos", description: "Servicios y vencimientos" },
   { id: "usuarios", label: "Clientes", description: "Administrador y clientes" },
-  { id: "cumplimiento", label: "Panama", description: "DGI, SFEP e ITBMS" },
   { id: "ia", label: "Conocimiento", description: "Guia optica y tecnologia" },
   { id: "resultados", label: "Resultados", description: "Examenes de vision" },
 ];
@@ -3094,114 +3092,6 @@ export default function App() {
     </div>
   );
 
-  const complianceView = (
-    <div className="space-y-8">
-      <SectionTitle title="Sistema para opticas en Panama" subtitle="Parametros operativos basados en facturacion electronica panamena, ITBMS y necesidades de una optica: receta, inventario tecnico, compras y atencion al cliente." />
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-2xl shadow-slate-950/20">
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-200">Checklist fiscal</p>
-          <div className="mt-6 space-y-4">
-            {[
-              "Configurar RUC y DV reales de Servicios Opticos Profesionales antes de produccion.",
-              "Emitir facturas electronicas por SFEP/DGI o por un PAC autorizado y conservar CUFE/CAFE.",
-              "Parametrizar ITBMS general 7%, tasas especiales o exenciones con el contador.",
-              "Reportar debito fiscal de ventas y credito fiscal de compras para Formulario 430.",
-              "Soportar notas de credito/debito y eventos de anulacion en una fase de integracion.",
-            ].map((item) => (
-              <div key={item} className="flex gap-3 rounded-3xl bg-white/10 p-4">
-                <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-cyan-300" />
-                <p className="text-sm leading-6 text-slate-200">{item}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-700">Alcance funcional</p>
-          <div className="mt-6 grid gap-4">
-            {[
-              ["Optometria", "Historia visual, receta OD/OI, cilindro, eje, adicion, DP y citas."],
-              ["Inventario", "SKU, minimo, costo, precio, ubicacion, proveedor y descuento de stock al facturar."],
-              ["Compras", "Ordenes con RUC/DV de proveedor y calculo de ITBMS pagado."],
-              ["Facturacion", "Cliente natural, empresa o consumidor final con CAFE de demostracion."],
-              ["Portal cliente", "Facturas, citas, saldo, formula y canal de solicitud desde movil."],
-            ].map(([title, text]) => (
-              <div key={title} className="rounded-3xl bg-slate-50 p-4">
-                <p className="font-black text-slate-950">{title}</p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">{text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-[2rem] bg-amber-50 p-6 ring-1 ring-amber-200">
-        <h3 className="text-xl font-black text-amber-950">Importante para produccion</h3>
-        <p className="mt-3 max-w-4xl text-sm leading-6 text-amber-900">
-          Esta version es un prototipo funcional de frontend. La validacion fiscal real requiere completar los datos tributarios del negocio, contratar PAC o usar el facturador DGI/SFEP, firmar documentos, generar QR autorizado, guardar XML y validar eventos segun la ficha tecnica vigente.
-        </p>
-      </section>
-    </div>
-  );
-
-  const techAdvancesView = (
-    <div className="space-y-8">
-      <SectionTitle title="Ultimos avances en gafas y lentes" subtitle="Tecnologia optica de vanguardia: lentes inteligentes, materiales premium, proteccion digital y bienestar visual para tus clientes." />
-      
-      <section className="grid gap-4 sm:grid-cols-5">
-        {["Todos", "Proteccion digital", "Multifocales", "Lentes inteligentes", "Materiales premium", "Bienestar visual", "Tecnologia inmersiva", "Tratamientos", "Smart eyewear", "Lentes especiales"].map((cat) => (
-          <button key={cat} className={cn("rounded-full px-4 py-2 text-xs font-bold transition", techFilter === cat ? "bg-slate-950 text-white" : "bg-white/80 text-slate-700 ring-1 ring-slate-200 hover:bg-white")} onClick={() => setTechFilter(cat)}>
-            {cat}
-          </button>
-        ))}
-      </section>
-
-      <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {techAdvances.filter((ta) => techFilter === "Todos" || ta.category === techFilter).map((advance) => (
-          <article key={advance.id} className="reveal-up rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80 transition hover:-translate-y-1">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-700">{advance.category}</p>
-                <h3 className="mt-2 text-xl font-black text-slate-950">{advance.title}</h3>
-              </div>
-              <StatusBadge status={advance.badge} />
-            </div>
-            <p className="mt-4 text-sm leading-6 text-slate-600">{advance.description}</p>
-            <div className="mt-4 rounded-3xl bg-cyan-50 p-4">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">Beneficios</p>
-              <p className="mt-2 text-sm font-bold text-cyan-900">{advance.benefits}</p>
-            </div>
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-lg font-black text-slate-950">{advance.priceRange}</p>
-              <button className="rounded-full bg-cyan-600 px-4 py-2 text-xs font-black text-white" onClick={() => {
-                setRole("Administrador");
-                setActiveView("inventario");
-              }}>Agregar al inventario</button>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <section className="rounded-[2rem] bg-gradient-to-br from-slate-950 to-slate-800 p-6 text-white shadow-2xl shadow-slate-950/20">
-        <h3 className="text-2xl font-black">¿Por que ofrecer tecnologia avanzada?</h3>
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl bg-white/10 p-5 backdrop-blur">
-            <p className="text-3xl font-black text-cyan-300">78%</p>
-            <p className="mt-2 text-sm font-bold text-slate-200">de los clientes prefiere lentes con filtro de luz azul para trabajo frente a pantallas.</p>
-          </div>
-          <div className="rounded-2xl bg-white/10 p-5 backdrop-blur">
-            <p className="text-3xl font-black text-emerald-300">+40%</p>
-            <p className="mt-2 text-sm font-bold text-slate-200">de incremento en ventas al ofrecer lentes progresivos digitales Free Form.</p>
-          </div>
-          <div className="rounded-2xl bg-white/10 p-5 backdrop-blur">
-            <p className="text-3xl font-black text-amber-300">B/. 85</p>
-            <p className="mt-2 text-sm font-bold text-slate-200">de valor promedio adicional por cliente al ofrecer recubrimientos premium.</p>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-
   const portalView = activeClient ? (
     <div className="space-y-8">
       <SectionTitle title={`Hola, ${activeClient.name}`} subtitle="Portal del cliente para consultar facturas, formula optica, citas y saldos desde telefono, tableta o escritorio." />
@@ -3591,10 +3481,8 @@ export default function App() {
     compras: purchasesView,
     facturacion: billingView,
     historias: clinicalHistoriesView,
-    avances: techAdvancesView,
     servicios: servicesView,
     usuarios: usersView,
-    cumplimiento: complianceView,
     ia: aiSearchView,
     resultados: resultsView,
     portal: portalView,
