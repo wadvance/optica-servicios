@@ -1916,11 +1916,66 @@ export default function App() {
     setDraftLines([]);
     setActiveInvoiceId(id);
     setInvoiceCustomerId("");
-    setTimeout(() => window.print(), 500);
+    setTimeout(() => printInvoice(newInvoice), 500);
     setInvoiceCustomerName("");
     setInvoiceCustomerDoc("");
     setInvoiceCustomerPhone("");
     setInvoiceCustomerAddress("");
+  }
+
+  function printInvoice(inv: Invoice) {
+    const t = invoiceTotals(inv.lines);
+    const linesHtml = inv.lines.map((line) => `
+      <tr>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${line.description}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${line.qty}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${line.glassPrice !== undefined ? formatMoney(line.glassPrice) : "-"}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${line.lensType || "-"}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${line.specifications || "-"}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatMoney(lineSubtotal(line) + lineTax(line))}</td>
+      </tr>`).join("");
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`
+      <html><head><meta charset="utf-8"><title>${inv.id}</title>
+      <style>
+        body{font-family:system-ui,sans-serif;margin:0;padding:20px;color:#0f172a}
+        h1{font-size:20px;margin:0 0 4px}
+        .header{display:flex;justify-content:space-between;align-items:start;border-bottom:2px solid #0f172a;padding-bottom:12px;margin-bottom:12px}
+        .info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:13px}
+        table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+        th{background:#f1f5f9;padding:8px;text-align:left;font-size:11px;text-transform:uppercase;border-bottom:2px solid #cbd5e1}
+        th.right{text-align:right}
+        th.center{text-align:center}
+        .totals{text-align:right;font-size:14px;border-top:2px solid #0f172a;padding-top:12px}
+        .totals strong{font-size:18px}
+        .footer{margin-top:24px;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:8px}
+      </style></head><body>
+      <div class="header">
+        <div><h1>SOP Optica</h1><p style="font-size:12px;color:#64748b">Servicios Opticos Profesionales</p></div>
+        <div style="text-align:right"><strong>${inv.id}</strong><br><span style="font-size:11px;color:#64748b">${formatDate(inv.date)}</span></div>
+      </div>
+      <div class="info">
+        <div><strong>Cliente</strong><br>${inv.customer}<br>${inv.document} DV ${inv.dv}</div>
+        <div style="text-align:right"><strong>Pago</strong><br>${inv.payment}<br><span style="color:#0891b2">${inv.status}</span></div>
+      </div>
+      <table>
+        <tr>
+          <th>Descripcion</th><th class="center">Cant.</th><th class="right">P. Vidrio</th><th>Tipo</th><th>Especificaciones</th><th class="right">Total</th>
+        </tr>
+        ${linesHtml}
+      </table>
+      <div class="totals">
+        Subtotal: ${formatMoney(t.subtotal)}<br>
+        ITBMS: ${formatMoney(t.tax)}<br>
+        <strong>Total: ${formatMoney(t.total)}</strong>
+      </div>
+      <div class="footer">CUFE: ${inv.cufe} | CAFE: ${inv.cafe} | Documento fiscal electronico panameno</div>
+      <script>window.onload=function(){window.print();window.close()};<` + `/script>
+      </body></html>
+    `);
+    win.document.close();
   }
 
   function markInvoicePaid(id: string) {
@@ -2825,7 +2880,7 @@ export default function App() {
         <div className="flex justify-between text-xl"><span className="font-black">Total</span><strong>{formatMoney(selectedInvoiceTotals.total)}</strong></div>
       </div>
       <div className="mt-5 flex flex-wrap gap-2">
-        <button className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white" onClick={() => window.print()}>Imprimir</button>
+        <button className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white" onClick={() => { if (selectedInvoice) printInvoice(selectedInvoice); }}>Imprimir</button>
         <button className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={() => markInvoicePaid(selectedInvoice.id)}>Marcar pagada</button>
       </div>
       <p className="mt-5 text-xs leading-5 text-slate-500">Demo fiscal: para produccion se debe conectar con facturador gratuito DGI/SFEP o PAC autorizado para validacion real de CUFE, QR y eventos.</p>
