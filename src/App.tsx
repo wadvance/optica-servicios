@@ -157,18 +157,6 @@ type BarcodeResult = {
   rawValue: string;
 };
 
-type BarcodeDetectorInstance = {
-  detect(source: HTMLVideoElement): Promise<BarcodeResult[]>;
-};
-
-type BarcodeDetectorConstructor = new () => BarcodeDetectorInstance;
-
-declare global {
-  interface Window {
-    BarcodeDetector?: BarcodeDetectorConstructor;
-  }
-}
-
 const PANAMA_TAX_RATE = 0.07;
 
 const business = {
@@ -1193,13 +1181,7 @@ export default function App() {
   const [customerForm, setCustomerForm] = useState({ name: "", document: "", dv: "", email: "", phone: "", address: "", prescription: "" });
   const [salesPeriod, setSalesPeriod] = useState<"dia" | "semana" | "mes">("dia");
   const [techFilter, setTechFilter] = useState("Todos");
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const inventoryFormRef = useRef<HTMLFormElement | null>(null);
-  const scanFrameRef = useRef<number | null>(null);
-  const [scannerOpen, setScannerOpen] = useState(false);
-  const [scannerStatus, setScannerStatus] = useState("Abre la camara y apunta al codigo de barras o QR del producto.");
-  const [detectedSku, setDetectedSku] = useState("");
 
   useEffect(() => {
     if ("serviceWorker" in navigator && window.location.protocol === "https:") {
@@ -1253,50 +1235,6 @@ export default function App() {
   useEffect(() => { const t = setTimeout(() => saveUserAccounts(users), 0); return () => clearTimeout(t); }, [users]);
 
   useEffect(() => { document.documentElement.classList.toggle("dark", darkMode); }, [darkMode]);
-
-  const startScanner = useCallback(async () => {
-    setScannerStatus("Solicitando permiso de camara...");
-
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setScannerStatus("Este navegador no permite abrir la camara. Ingresa el codigo manualmente.");
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
-      streamRef.current = stream;
-      setScannerOpen(true);
-    } catch {
-      setScannerStatus("No se pudo abrir la camara. Revisa permisos o usa HTTPS y registra el SKU manualmente.");
-    }
-  }, []);
-
-  const streamAttachedRef = useRef(false);
-
-  useEffect(() => {
-    if (!scannerOpen) {
-      stopScanner();
-      streamAttachedRef.current = false;
-      return;
-    }
-
-    if (!videoRef.current || !streamRef.current || streamAttachedRef.current) return;
-
-    const video = videoRef.current;
-    const stream = streamRef.current;
-    video.srcObject = stream;
-    video.play();
-    streamAttachedRef.current = true;
-
-    if (!window.BarcodeDetector) {
-      setScannerStatus("Camara activa. Tu navegador no soporta lectura automatica; escribe el codigo en el campo SKU.");
-      return;
-    }
-
-    const detector = new window.BarcodeDetector();
-    setScannerStatus("Camara activa. Apunta al codigo de barras o QR del producto.");
-    scanBarcodeFrame(detector);
-  });
 
   useEffect(() => {
     const adminViews = adminNav.map((item) => item.id);
@@ -1583,65 +1521,6 @@ export default function App() {
     setSessionUser(registeredUser.email);
     return "";
   }
-
-  function stopScanner() {
-    if (scanFrameRef.current !== null) {
-      window.cancelAnimationFrame(scanFrameRef.current);
-      scanFrameRef.current = null;
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  }
-
-  function scanBarcodeFrame(detector: BarcodeDetectorInstance) {
-    const scan = async () => {
-      if (!videoRef.current) {
-        return;
-      }
-
-      try {
-        const results = await detector.detect(videoRef.current);
-        const code = results[0]?.rawValue?.trim();
-
-        if (code) {
-          setDetectedSku(code);
-          const existing = inventory.find((item) => item.sku.toLowerCase() === code.toLowerCase());
-          if (existing) {
-            setScannerStatus(`Producto existente: ${existing.name} (SKU: ${code}). Se agregaran unidades al stock actual (${existing.stock}).`);
-            setNewInventoryItem((form) => ({ ...form, sku: code, name: existing.name, stock: "1", cost: String(existing.cost), price: String(existing.price), category: existing.category, supplier: existing.supplier, location: existing.location }));
-          } else {
-            setNewInventoryItem((form) => ({ ...form, sku: code, name: form.name || `Producto ${code.slice(-6)}` }));
-            setScannerStatus(`Codigo detectado: ${code}. Completa los datos y registra el producto.`);
-          }
-          stopScanner();
-          return;
-        }
-      } catch {
-        setScannerStatus("Buscando codigo. Si no se lee, ingresa el SKU manualmente.");
-      }
-
-      scanFrameRef.current = window.requestAnimationFrame(scan);
-    };
-
-    scanFrameRef.current = window.requestAnimationFrame(scan);
-  }
-
-  function restartScanner() {
-    stopScanner();
-    setDetectedSku("");
-    setScannerStatus("Reiniciando camara...");
-    setScannerOpen(false);
-    window.setTimeout(() => startScanner(), 80);
-  }
-
-
 
   function switchRole(nextRole: Role) {
     setRole(nextRole);
@@ -2493,45 +2372,7 @@ export default function App() {
       <SectionTitle
         title="Inventario optico"
         subtitle="Controla monturas, lentes oftalmicos, lentes de contacto, accesorios y servicios clinicos con minimos, costos, precios e ITBMS por item."
-        action={
-          <div className="flex flex-wrap gap-2">
-            <button className="rounded-full bg-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-cyan-600/20" onClick={startScanner}>
-              Escanear con camara
-            </button>
-          </div>
-        }
       />
-
-      {scannerOpen && (
-        <section className="reveal-up rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl shadow-slate-950/20">
-          <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-start">
-            <div>
-              <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-black ring-1 ring-white/10">
-                <video ref={videoRef} className="h-full w-full object-cover" playsInline muted autoPlay />
-                <div className="pointer-events-none absolute inset-8 rounded-3xl border-2 border-cyan-300/80" />
-                <div className="scanner-line pointer-events-none absolute left-10 right-10 top-1/2 h-0.5 bg-cyan-300 shadow-[0_0_22px_rgba(103,232,249,0.9)]" />
-              </div>
-              <div className="mt-4 rounded-3xl bg-white/10 p-4 text-sm leading-6 text-slate-200">
-                <p className="font-black text-white">{detectedSku ? `SKU detectado: ${detectedSku}` : "Escaner de mercancia"}</p>
-                <p className="mt-1">{scannerStatus}</p>
-                <p className="mt-2 text-xs text-slate-300">En celular usa HTTPS o localhost para habilitar la camara. Si el navegador no lee el codigo, escribe el SKU manualmente en el formulario.</p>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button type="button" className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-950" onClick={restartScanner}>
-                  Reintentar lectura
-                </button>
-                <button type="button" className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white ring-1 ring-white/15" onClick={() => setScannerOpen(false)}>
-                  Cerrar camara
-                </button>
-              </div>
-            </div>
-            <div className="rounded-[1.5rem] bg-white/10 p-5 text-sm leading-6 text-slate-200">
-              <p className="font-black text-white">Datos del escaneo</p>
-              <p className="mt-2">{detectedSku ? `SKU: ${detectedSku} — los datos se han rellenado automaticamente en el formulario de abajo.` : "Apunta la camara a un codigo de barras o QR para auto-rellenar el formulario."}</p>
-            </div>
-          </div>
-        </section>
-      )}
 
       <section className="grid gap-6">
         <form ref={inventoryFormRef} className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80 scroll-mt-6" onSubmit={addInventoryItem}>
@@ -2539,7 +2380,7 @@ export default function App() {
             <h3 className="text-xl font-black text-slate-950">{editingProductId ? "Editar producto" : "Registrar producto"}</h3>
             {editingProductId && <button type="button" className="text-sm font-bold text-rose-600" onClick={cancelEditInventoryItem}>Cancelar</button>}
           </div>
-           <p className="mt-1 text-sm text-slate-500">Usa el escaner o completa los campos manualmente. El modelo y SKU deben ser unicos.</p>
+           <p className="mt-1 text-sm text-slate-500">Completa los campos manualmente. El modelo y SKU deben ser unicos.</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <label className="text-sm font-bold text-slate-700">Nombre del producto</label>
