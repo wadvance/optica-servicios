@@ -26,6 +26,9 @@ export type InventoryItem = {
   taxRate: number;
   location: string;
   status: "Activo" | "Bajo stock" | "Servicio";
+  caja?: string;
+  vitrina?: string;
+  repisa?: string;
 };
 
 export type PurchaseLine = {
@@ -193,205 +196,11 @@ const clientNav: { id: ClientView; label: string; description: string }[] = [
   { id: "ia", label: "Asistente IA", description: "Chatbot optico inteligente" },
 ];
 
-const inventorySeed: InventoryItem[] = [
-  {
-    id: "INV-001",
-    sku: "MNT-AC-101",
-    name: "Montura acetato profesional",
-    category: "Monturas",
-    model: "Clasica",
-    supplier: "Distribuidora Visual PA",
-    stock: 18,
-    minStock: 8,
-    cost: 24,
-    price: 75,
-    taxRate: PANAMA_TAX_RATE,
-    location: "Vitrina A",
-    status: "Activo",
-  },
-  {
-    id: "INV-002",
-    sku: "MNT-MT-204",
-    name: "Montura metal liviano",
-    category: "Monturas",
-    model: "Metalica",
-    supplier: "OptiSupply Panama",
-    stock: 7,
-    minStock: 10,
-    cost: 29,
-    price: 89,
-    taxRate: PANAMA_TAX_RATE,
-    location: "Vitrina B",
-    status: "Bajo stock",
-  },
-  {
-    id: "INV-003",
-    sku: "LEN-PROG-330",
-    name: "Lente progresivo antirreflejo",
-    category: "Lentes oftalmicos",
-    model: "Progresivo",
-    supplier: "Laboratorio Central Optico",
-    stock: 32,
-    minStock: 12,
-    cost: 58,
-    price: 145,
-    taxRate: PANAMA_TAX_RATE,
-    location: "Laboratorio",
-    status: "Activo",
-  },
-  {
-    id: "INV-004",
-    sku: "LEN-BLUE-220",
-    name: "Filtro azul monofocal",
-    category: "Lentes oftalmicos",
-    model: "Monofocal",
-    supplier: "Laboratorio Central Optico",
-    stock: 24,
-    minStock: 10,
-    cost: 20,
-    price: 65,
-    taxRate: PANAMA_TAX_RATE,
-    location: "Laboratorio",
-    status: "Activo",
-  },
-  {
-    id: "INV-005",
-    sku: "LC-HID-006",
-    name: "Lentes de contacto hidratados",
-    category: "Lentes de contacto",
-    model: "Hidratado",
-    supplier: "Contact Vision Group",
-    stock: 11,
-    minStock: 14,
-    cost: 14,
-    price: 38,
-    taxRate: PANAMA_TAX_RATE,
-    location: "Gabinete",
-    status: "Bajo stock",
-  },
-  {
-    id: "INV-006",
-    sku: "ACC-SOL-100",
-    name: "Solucion multiproposito 360 ml",
-    category: "Accesorios",
-    model: "Estandar",
-    supplier: "Contact Vision Group",
-    stock: 36,
-    minStock: 18,
-    cost: 5,
-    price: 12,
-    taxRate: PANAMA_TAX_RATE,
-    location: "Mostrador",
-    status: "Activo",
-  },
-  {
-    id: "INV-007",
-    sku: "SRV-EXA-001",
-    name: "Examen visual completo",
-    category: "Servicios clinicos",
-    model: "",
-    supplier: "Servicios internos",
-    stock: 999,
-    minStock: 0,
-    cost: 0,
-    price: 30,
-    taxRate: 0,
-    location: "Consultorio",
-    status: "Servicio",
-  },
-  {
-    id: "INV-008",
-    sku: "PAS-HOM-001",
-    name: "Pasta Hombre",
-    category: "Pasta Hombre",
-    model: "Clasica",
-    supplier: "Distribuidora Visual PA",
-    stock: 15,
-    minStock: 5,
-    cost: 22,
-    price: 70,
-    taxRate: PANAMA_TAX_RATE,
-    location: "Vitrina A",
-    status: "Activo",
-  },
-  {
-    id: "INV-009",
-    sku: "PAS-MUJ-001",
-    name: "Pasta Mujer",
-    category: "Pasta Mujer",
-    model: "Clasica",
-    supplier: "Distribuidora Visual PA",
-    stock: 15,
-    minStock: 5,
-    cost: 22,
-    price: 70,
-    taxRate: PANAMA_TAX_RATE,
-    location: "Vitrina A",
-    status: "Activo",
-  },
-];
+const inventorySeed: InventoryItem[] = [];
 
-const purchasesSeed: PurchaseOrder[] = [
-  {
-    id: "OC-0008",
-    supplier: "Laboratorio Central Optico",
-    ruc: "1556842-1-742001",
-    dv: "41",
-    date: "2026-05-03",
-    status: "Recibida",
-    lines: [
-      { description: "Lentes progresivos", qty: 20, unitPrice: 25, barcode: "LEN-PROG-330" },
-      { description: "Monturas metal", qty: 12, unitPrice: 40, barcode: "MNT-MT-204" },
-      { description: "Lentes antirreflejo", qty: 10, unitPrice: 38, barcode: "LEN-BLUE-220" },
-    ],
-    subtotal: 1680,
-    tax: 117.6,
-    total: 1797.6,
-  },
-  {
-    id: "OC-0009",
-    supplier: "OptiSupply Panama",
-    ruc: "890122-1-533221",
-    dv: "09",
-    date: "2026-05-10",
-    status: "Pendiente",
-    lines: [
-      { description: "Soluciones multiproposito", qty: 48, unitPrice: 8.5, barcode: "ACC-SOL-100" },
-      { description: "Estuches para lentes", qty: 24, unitPrice: 5, barcode: "" },
-      { description: "Paños microfibra", qty: 36, unitPrice: 3.5, barcode: "" },
-    ],
-    subtotal: 720,
-    tax: 50.4,
-    total: 770.4,
-  },
-  {
-    id: "OC-0010",
-    supplier: "Contact Vision Group",
-    ruc: "1992021-1-690010",
-    dv: "66",
-    date: "2026-05-12",
-    status: "Pagada",
-    lines: [
-      { description: "Lentes de contacto diarios", qty: 30, unitPrice: 15, barcode: "LC-HID-006" },
-      { description: "Lentes de contacto mensuales", qty: 20, unitPrice: 22, barcode: "" },
-    ],
-    subtotal: 930,
-    tax: 65.1,
-    total: 995.1,
-  },
-];
+const purchasesSeed: PurchaseOrder[] = [];
 
-const serviceSeed: ServicePayment[] = [
-  { id: "PS-001", service: "Energia electrica", provider: "ENSA / Naturgy", category: "Servicios publicos", dueDate: "2026-06-15", amount: 148.45, status: "Vence pronto", method: "ACH Banco General" },
-  { id: "PS-002", service: "Agua", provider: "IDAAN", category: "Servicios publicos", dueDate: "2026-06-20", amount: 38.1, status: "Pendiente", method: "Banca en linea" },
-  { id: "PS-003", service: "Internet y telefonia", provider: "Proveedor local", category: "Telecomunicaciones", dueDate: "2026-06-08", amount: 74.99, status: "Pagado", method: "Tarjeta" },
-  { id: "PS-004", service: "Plan celular", provider: "Tigo / Digicel / Movistar", category: "Telecomunicaciones", dueDate: "2026-06-18", amount: 35.5, status: "Pendiente", method: "Banca en linea" },
-  { id: "PS-005", service: "Tarjeta de credito", provider: "Banco General / BAC Credomatic", category: "Financiero", dueDate: "2026-06-25", amount: 250, status: "Pendiente", method: "Pago automatico" },
-  { id: "PS-006", service: "PAC / facturacion electronica", provider: "Proveedor Autorizado Calificado", category: "Impuestos", dueDate: "2026-06-30", amount: 45, status: "Pendiente", method: "Transferencia" },
-  { id: "PS-007", service: "Declaracion ITBMS", provider: "DGI e-Tax 2.0", category: "Impuestos", dueDate: "2026-06-15", amount: 0, status: "Pendiente", method: "Formulario 430" },
-  { id: "PS-008", service: "Alquiler local", provider: "Arrendador", category: "Alquiler", dueDate: "2026-07-01", amount: 600, status: "Pendiente", method: "Transferencia" },
-  { id: "PS-009", service: "Seguro medico", provider: "Aseguradora", category: "Seguros", dueDate: "2026-06-28", amount: 85, status: "Pendiente", method: "Tarjeta" },
-];
+const serviceSeed: ServicePayment[] = [];
 
 const techAdvancesSeed: TechAdvance[] = [
   {
@@ -486,87 +295,14 @@ const techAdvancesSeed: TechAdvance[] = [
   },
 ];
 
-const customersSeed: Customer[] = [
-  {
-    id: "CLI-001",
-    name: "María González",
-    document: "8-888-2026",
-    dv: "12",
-    email: "maria.gonzalez@example.com",
-    phone: "+507 6123-4567",
-    prescription: "OD -1.25 / -0.50 x 90, OI -1.00 / -0.25 x 85, ADD +1.50, DP 62",
-    lastVisit: "2026-05-11",
-    balance: 0,
-  },
-  {
-    id: "CLI-002",
-    name: "Carlos Rivera",
-    document: "E-8-71000",
-    dv: "00",
-    email: "carlos.rivera@example.com",
-    phone: "+507 6234-8899",
-    prescription: "OD +0.75 / -0.75 x 120, OI +0.50 / -0.50 x 110, DP 64",
-    lastVisit: "2026-04-28",
-    balance: 48,
-  },
-  {
-    id: "CLI-003",
-    name: "Comercial Vista Azul, S.A.",
-    document: "1556842-1-742001",
-    dv: "41",
-    email: "compras@vistaazul.example",
-    phone: "+507 6300-1000",
-    prescription: "Cuenta corporativa: ventas con RUC/DV, orden de compra requerida",
-    lastVisit: "2026-05-17",
-    balance: 112,
-  },
-];
+const customersSeed: Customer[] = [];
 
-const invoicesSeed: Invoice[] = [
-  {
-    id: "FE-00021",
-    customerId: "CLI-001",
-    customer: "María González",
-    document: "8-888-2026",
-    dv: "12",
-    date: "2026-05-18",
-    status: "Pagada",
-    payment: "Tarjeta Clave",
-    cufe: "FEPA260518SOP00021A9B8C7",
-    cafe: "CAFE-00021-SOP",
-    lines: [
-      { itemId: "INV-003", description: "Lente progresivo antirreflejo", qty: 1, unitPrice: 145, taxRate: PANAMA_TAX_RATE, glassPrice: 18.50, lensType: "Progresivo", specifications: "Antirreflejo, filtro azul, alto indice 1.67" },
-      { itemId: "INV-001", description: "Montura acetato profesional", qty: 1, unitPrice: 75, taxRate: PANAMA_TAX_RATE },
-      { itemId: "INV-007", description: "Examen visual completo", qty: 1, unitPrice: 30, taxRate: 0 },
-    ],
-  },
-  {
-    id: "FE-00022",
-    customerId: "CLI-002",
-    customer: "Carlos Rivera",
-    document: "E-8-71000",
-    dv: "00",
-    date: "2026-05-20",
-    status: "Emitida",
-    payment: "Yappy / ACH",
-    cufe: "FEPA260520SOP00022F4E2D1",
-    cafe: "CAFE-00022-SOP",
-    lines: [
-      { itemId: "INV-005", description: "Lentes de contacto hidratados", qty: 2, unitPrice: 38, taxRate: PANAMA_TAX_RATE },
-      { itemId: "INV-006", description: "Solucion multiproposito 360 ml", qty: 1, unitPrice: 12, taxRate: PANAMA_TAX_RATE },
-    ],
-  },
-];
+const invoicesSeed: Invoice[] = [];
 
-const appointmentsSeed: Appointment[] = [
-  { id: "CT-015", customerId: "CLI-001", date: "2026-06-12", time: "09:00", reason: "Ajuste de montura y control visual", status: "Confirmada" },
-  { id: "CT-016", customerId: "CLI-002", date: "2026-06-14", time: "14:30", reason: "Revision de lentes de contacto", status: "Solicitada" },
-];
+const appointmentsSeed: Appointment[] = [];
 
 const usersSeed: UserAccount[] = [
-  { id: "USR-001", name: "Jorge Tello", role: "Administrador", email: "jorge.tello@sop.example", status: "Activo" },
-  { id: "USR-002", name: "María González", role: "Cliente", email: "maria.gonzalez@example.com", status: "Activo" },
-  { id: "USR-003", name: "Carlos Rivera", role: "Cliente", email: "carlos.rivera@example.com", status: "Activo" },
+  { id: "USR-001", name: "Administrador del Sistema", role: "Super Admin", email: "barj23535@gmail.com", status: "Activo" },
 ];
 
 function usePersistentState<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>] {
@@ -783,12 +519,10 @@ function AuthScreen({
             {mode === "registro" && (
               <div className="grid gap-2">
                 <p className="text-sm font-bold text-slate-700">Registrarse como</p>
-                <div className="grid grid-cols-2 gap-2 rounded-full bg-slate-100 p-1">
-                  {(registeredUser ? ["Administrador", "Cliente"] : ["Super Admin"] as Role[]).map((item) => (
-                    <button key={item} type="button" className={cn("rounded-full px-4 py-3 text-sm font-black transition", registerRole === item ? "bg-slate-950 text-white" : "text-slate-600")} onClick={() => setRegisterRole(item)}>
-                      {item}
-                    </button>
-                  ))}
+                <div className="rounded-full bg-slate-100 p-1">
+                  <button type="button" className={cn("w-full rounded-full px-4 py-3 text-sm font-black transition", "bg-slate-950 text-white")}>
+                    {registeredUser ? "Administrador" : "Super Admin"}
+                  </button>
                 </div>
               </div>
             )}
@@ -1165,7 +899,7 @@ export default function App() {
   const [applyItbms, setApplyItbms] = useState(true);
   const [draftLines, setDraftLines] = useState<InvoiceLine[]>([]);
   const [appointmentForm, setAppointmentForm] = useState({ date: "2026-06-21", time: "10:00", reason: "Examen visual" });
-  const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
+  const [newInventoryItem, setNewInventoryItem] = useState({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "", caja: "", vitrina: "", repisa: "" });
   const [purchaseForm, setPurchaseForm] = useState({ supplier: "", ruc: "", dv: "" });
   const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([]);
   const [purchaseLineForm, setPurchaseLineForm] = useState({ description: "", qty: "", unitPrice: "0", barcode: "" });
@@ -1246,6 +980,24 @@ export default function App() {
       setActiveView("portal");
     }
   }, [activeView, role, setActiveView]);
+
+  useEffect(() => {
+    if (activeView !== "facturacion") return;
+    setInvoiceCustomerId("");
+    setInvoiceItemId("");
+    setInvoiceCustomerName("");
+    setInvoiceCustomerDoc("");
+    setInvoiceCustomerPhone("");
+    setInvoiceCustomerAddress("");
+    setInvoiceQty("");
+    setInvoiceGlassPrice("");
+    setInvoiceLensType("");
+    setInvoiceSpecifications("");
+    setInvoicePayment("Efectivo");
+    setApplyItbms(true);
+    setDraftLines([]);
+    setActiveInvoiceId("");
+  }, [activeView]);
 
   useEffect(() => {
     if (!customers.some((customer) => customer.id === invoiceCustomerId) && customers[0]) {
@@ -1567,12 +1319,15 @@ export default function App() {
       price: String(item.price),
       supplier: item.supplier,
       location: item.location,
+      caja: item.caja || "",
+      vitrina: item.vitrina || "",
+      repisa: item.repisa || "",
     });
   }
 
   function cancelEditInventoryItem() {
     setEditingProductId(null);
-    setNewInventoryItem({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
+    setNewInventoryItem({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "", caja: "", vitrina: "", repisa: "" });
   }
 
   function removeCategory(cat: string) {
@@ -1601,6 +1356,9 @@ export default function App() {
     const model = newInventoryItem.model.trim();
     const supplier = newInventoryItem.supplier.trim() || "Proveedor por asignar";
     const location = newInventoryItem.location.trim() || "Deposito";
+    const caja = newInventoryItem.caja.trim() || undefined;
+    const vitrina = newInventoryItem.vitrina.trim() || undefined;
+    const repisa = newInventoryItem.repisa.trim() || undefined;
 
     if (!sku || Number.isNaN(price) || !name) {
       return;
@@ -1635,6 +1393,9 @@ export default function App() {
             cost,
             price,
             location,
+            caja,
+            vitrina,
+            repisa,
             status: item.status === "Servicio" ? "Servicio" : nextStock <= minStock ? "Bajo stock" : "Activo",
           };
         });
@@ -1661,6 +1422,9 @@ export default function App() {
             price,
             taxRate: isService ? 0 : PANAMA_TAX_RATE,
             location,
+            caja,
+            vitrina,
+            repisa,
             status: isService ? "Servicio" : stock <= minStock ? "Bajo stock" : "Activo",
           },
         ];
@@ -1670,7 +1434,7 @@ export default function App() {
     }
 
     setInventoryQuery(sku);
-    setNewInventoryItem({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
+    setNewInventoryItem({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "", caja: "", vitrina: "", repisa: "" });
     setTimeout(() => inventoryFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
@@ -2191,7 +1955,7 @@ export default function App() {
 
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(9);
-    const colW = [60, 15, 20, 20, 20, 20, 20];
+    const colW = [50, 14, 18, 18, 18, 36, 14];
     const cols = [margin];
     for (let i = 1; i < colW.length; i++) cols.push(cols[i - 1] + colW[i - 1]);
     pdf.text("Descripcion", cols[0], y);
@@ -2199,7 +1963,7 @@ export default function App() {
     pdf.text("P. Unit.", cols[2], y);
     pdf.text("Vidrio", cols[3], y);
     pdf.text("Tipo", cols[4], y);
-    pdf.text("ITBMS", cols[5], y);
+    pdf.text("Especificaciones", cols[5], y);
     pdf.text("Total", cols[6], y);
     y += 5;
     pdf.line(margin, y, pageW - margin, y);
@@ -2210,12 +1974,12 @@ export default function App() {
     for (const line of invoice.lines) {
       const sub = lineSubtotal(line);
       const tax = lineTax(line);
-      pdf.text(line.description, cols[0], y);
+      pdf.text(line.description, cols[0], y, { maxWidth: cols[1] - cols[0] });
       pdf.text(String(line.qty), cols[1], y);
       pdf.text(formatMoney(line.unitPrice), cols[2], y);
       pdf.text(line.glassPrice !== undefined ? formatMoney(line.glassPrice) : "-", cols[3], y);
       pdf.text(line.lensType || "-", cols[4], y);
-      pdf.text(formatMoney(tax), cols[5], y);
+      pdf.text(line.specifications || "-", cols[5], y, { maxWidth: cols[6] - cols[5] });
       pdf.text(formatMoney(sub + tax), cols[6], y);
       if (line.specifications) {
         y += 5;
@@ -2316,11 +2080,14 @@ export default function App() {
         <button className="cursor-pointer rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-950/15 transition hover:-translate-y-0.5" onClick={() => setActiveView("inventario")}>
           Inventario
         </button>
+        <button className="cursor-pointer rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:-translate-y-0.5" onClick={() => { navigator.clipboard.writeText("https://wadvance.github.io/optica-servicios/"); alert("Enlace copiado al portapapeles. Pégalo en tus redes sociales."); }}>
+          Compartir
+        </button>
       </div>
 
       <section className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80 backdrop-blur">
         <h3 className="text-xl font-black text-slate-950">Estado de resultados simplificado</h3>
-        <p className="mt-1 text-sm text-slate-600">Resumen de ingresos, gastos y resultado neto del periodo demo.</p>
+        <p className="mt-1 text-sm text-slate-600">Resumen de ingresos, gastos y resultado neto del periodo.</p>
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl bg-emerald-50 p-5 ring-1 ring-emerald-200">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Ingresos (ventas)</p>
@@ -2406,14 +2173,14 @@ export default function App() {
               <input list="model-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.model} onChange={(event) => {
                 const mod = event.target.value;
                 if (!mod) {
-                  setNewInventoryItem({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "" });
+                  setNewInventoryItem({ name: "", category: "", model: "", sku: "", stock: "", minStock: "", cost: "", price: "", supplier: "", location: "", caja: "", vitrina: "", repisa: "" });
                   setEditingProductId(null);
                   return;
                 }
                 const match = inventory.find((i) => i.model === mod);
                 if (match) {
                   setEditingProductId(match.id);
-                  setNewInventoryItem({ name: match.name, category: match.category, model: mod, sku: match.sku, stock: String(match.stock), minStock: String(match.minStock), cost: String(match.cost), price: String(match.price), supplier: match.supplier, location: match.location });
+                  setNewInventoryItem({ name: match.name, category: match.category, model: mod, sku: match.sku, stock: String(match.stock), minStock: String(match.minStock), cost: String(match.cost), price: String(match.price), supplier: match.supplier, location: match.location, caja: match.caja || "", vitrina: match.vitrina || "", repisa: match.repisa || "" });
                 } else {
                   setEditingProductId(null);
                   setNewInventoryItem((prev) => ({ ...prev, model: mod }));
@@ -2435,6 +2202,18 @@ export default function App() {
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               Ubicacion
               <input list="location-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.location} onChange={(event) => setNewInventoryItem((item) => ({ ...item, location: event.target.value }))} placeholder="Ej. Vitrina A, Deposito" />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Caja
+              <input list="caja-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.caja} onChange={(event) => setNewInventoryItem((item) => ({ ...item, caja: event.target.value }))} placeholder="Ej. Caja 1" />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Vitrina
+              <input list="vitrina-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.vitrina} onChange={(event) => setNewInventoryItem((item) => ({ ...item, vitrina: event.target.value }))} placeholder="Ej. Vitrina A" />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Repisa
+              <input list="repisa-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={newInventoryItem.repisa} onChange={(event) => setNewInventoryItem((item) => ({ ...item, repisa: event.target.value }))} placeholder="Ej. Repisa 3" />
             </label>
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               Precio de compra (costo)
@@ -2478,6 +2257,28 @@ export default function App() {
               <option key={loc} value={loc} />
             ))}
           </datalist>
+          <datalist id="caja-list">
+            <option value="Caja 1" />
+            <option value="Caja 2" />
+            <option value="Caja 3" />
+          </datalist>
+          <datalist id="vitrina-list">
+            <option value="Vitrina A" />
+            <option value="Vitrina B" />
+            <option value="Vitrina C" />
+          </datalist>
+          <datalist id="repisa-list">
+            <option value="Repisa 1" />
+            <option value="Repisa 2" />
+            <option value="Repisa 3" />
+            <option value="Repisa 4" />
+            <option value="Repisa 5" />
+            <option value="Repisa 6" />
+            <option value="Repisa 7" />
+            <option value="Repisa 8" />
+            <option value="Repisa 9" />
+            <option value="Repisa 10" />
+          </datalist>
         </form>
 
         <div className="rounded-[2rem] bg-white/80 p-5 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
@@ -2512,6 +2313,9 @@ export default function App() {
                           <div><span className="font-semibold text-slate-500">Proveedor:</span> <span className="text-slate-700">{item.supplier}</span></div>
                           <div><span className="font-semibold text-slate-500">Stock:</span> <span className="font-black text-slate-950">{item.stock}</span> <span className="text-slate-400">/ min {item.minStock}</span></div>
                           <div><span className="font-semibold text-slate-500">Costo:</span> <span className="text-slate-700">{formatMoney(item.cost)}</span></div>
+                          <div><span className="font-semibold text-slate-500">Caja:</span> <span className="text-slate-700">{item.caja || "-"}</span></div>
+                          <div><span className="font-semibold text-slate-500">Vitrina:</span> <span className="text-slate-700">{item.vitrina || "-"}</span></div>
+                          <div><span className="font-semibold text-slate-500">Repisa:</span> <span className="text-slate-700">{item.repisa || "-"}</span></div>
                         </div>
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           <button className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 font-black text-slate-900" onClick={(e) => { e.stopPropagation(); updateStock(item.id, -1); }}>-</button>
@@ -2818,7 +2622,7 @@ export default function App() {
               {draftLines.length === 0 ? (
                 <div className="p-5"><EmptyState title="Factura sin lineas" subtitle="Agrega productos o servicios para calcular el total." /></div>
               ) : (
-                <div className="min-w-[600px]">
+                <div className="min-w-[800px]">
                   <div className="hidden grid-cols-[2fr_70px_90px_90px_110px_1fr_100px_70px] gap-2 bg-slate-100 px-3 py-2 text-xs font-bold uppercase text-slate-500 sm:grid">
                     <span>Descripcion</span>
                     <span>Cant.</span>
@@ -3517,12 +3321,8 @@ export default function App() {
           <div className="flex flex-col gap-5">
             <Logo />
             {!isMobile && (
-              <div className={cn("grid grid-cols-2 gap-2 rounded-full p-1 shadow-sm ring-1", darkMode ? "bg-slate-800 ring-slate-700" : "bg-white ring-slate-200")}>
-                {(["Super Admin", "Administrador", "Cliente"] as Role[]).map((item) => (
-                  <button key={item} className={cn("rounded-full px-3 py-2 text-sm font-black transition", displayRole === item ? "bg-slate-950 text-white shadow-lg shadow-slate-950/15" : darkMode ? "text-slate-400 hover:bg-slate-700" : "text-slate-600 hover:bg-slate-100")} onClick={() => switchRole(item)} aria-pressed={displayRole === item}>
-                    {item}
-                  </button>
-                ))}
+              <div className={cn("rounded-full text-center p-3 text-sm font-black shadow-sm ring-1", darkMode ? "bg-slate-800 text-slate-300 ring-slate-700" : "bg-white text-slate-700 ring-slate-200")}>
+                {displayRole}
               </div>
             )}
 
@@ -3612,7 +3412,7 @@ export default function App() {
                   Instalar app
                 </button>
               )}
-              <button className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white" onClick={() => { stopScanner(); supabase.auth.signOut(); setSessionUser(null); }}>Salir</button>
+              <button className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white" onClick={() => { supabase.auth.signOut(); setSessionUser(null); }}>Salir</button>
             </div>
           </header>
 
