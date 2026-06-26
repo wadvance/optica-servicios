@@ -628,7 +628,7 @@ export default function App() {
   const [registeredUser, setRegisteredUser] = usePersistentState<AuthUser | null>("sop-auth-user", null);
   const [sessionUser, setSessionUser] = usePersistentState<string | null>("sop-session-user", null);
   const [role, setRole] = usePersistentState<Role>("sop-role", "Super Admin");
-  const [activeView, setActiveView] = usePersistentState<View>("sop-view", "panel");
+  const [activeView, setActiveView] = useState<View>("panel");
   const [inventory, setInventory] = usePersistentState<InventoryItem[]>("sop-inventory", inventorySeed);
   const [purchases, setPurchases] = usePersistentState<PurchaseOrder[]>("sop-purchases", purchasesSeed);
   const [servicePayments, setServicePayments] = usePersistentState<ServicePayment[]>("sop-service-payments", serviceSeed);
