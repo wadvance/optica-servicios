@@ -892,6 +892,7 @@ export default function App() {
   const [invoiceCustomerPhone, setInvoiceCustomerPhone] = useState("");
   const [invoiceCustomerAddress, setInvoiceCustomerAddress] = useState("");
   const [invoiceQty, setInvoiceQty] = useState("");
+  const [invoiceUnitPrice, setInvoiceUnitPrice] = useState("");
   const [invoiceGlassPrice, setInvoiceGlassPrice] = useState("");
   const [invoiceLensType, setInvoiceLensType] = useState("");
   const [invoiceSpecifications, setInvoiceSpecifications] = useState("");
@@ -1450,7 +1451,7 @@ export default function App() {
         itemId: item.id,
         description: item.name,
         qty: qty || 1,
-        unitPrice: item.price,
+        unitPrice: Number(invoiceUnitPrice) || 0,
         taxRate: applyItbms ? item.taxRate : 0,
         glassPrice: Number(invoiceGlassPrice) || undefined,
         lensType: invoiceLensType.trim() || undefined,
@@ -1458,6 +1459,7 @@ export default function App() {
       },
     ]);
     setInvoiceQty("");
+    setInvoiceUnitPrice(String(item.price));
     setInvoiceGlassPrice("");
     setInvoiceLensType("");
     setInvoiceSpecifications("");
@@ -2553,7 +2555,7 @@ export default function App() {
         <div className="space-y-6">
           <div className="rounded-[2rem] bg-white/80 p-6 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200/80">
             <h3 className="text-xl font-black text-slate-950">Nueva factura</h3>
-            <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr_120px_auto] lg:items-end">
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr_100px_120px_120px] lg:items-end">
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Cliente
                 <input list="customer-list" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceCustomerName} onChange={(event) => { setInvoiceCustomerName(event.target.value); const found = customers.find((c) => c.name === event.target.value); setInvoiceCustomerId(found ? found.id : ""); if (found) { setInvoiceCustomerDoc(""); setInvoiceCustomerPhone(""); setInvoiceCustomerAddress(""); } }} placeholder="Escribe o selecciona un cliente" autoComplete="off" />
@@ -2574,7 +2576,12 @@ export default function App() {
               </label>
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Producto o servicio
-                <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceItemId} onChange={(event) => setInvoiceItemId(event.target.value)}>
+                <select className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceItemId} onChange={(event) => {
+                  const id = event.target.value;
+                  setInvoiceItemId(id);
+                  const item = inventory.find((i) => i.id === id);
+                  setInvoiceUnitPrice(item ? String(item.price) : "");
+                }}>
                   {(() => {
                     const servicios: typeof inventory = [];
                     const productos: typeof inventory = [];
@@ -2583,8 +2590,8 @@ export default function App() {
                       else productos.push(item);
                     }
                     const opts: ReactNode[] = [];
-                    if (servicios.length) opts.push(<optgroup key="serv" label="Servicios">{servicios.map((item) => <option key={item.id} value={item.id}>{item.name} · {formatMoney(item.price)}</option>)}</optgroup>);
-                    if (productos.length) opts.push(<optgroup key="prod" label="Productos">{productos.map((item) => <option key={item.id} value={item.id}>{item.name} · {formatMoney(item.price)}</option>)}</optgroup>);
+                    if (servicios.length) opts.push(<optgroup key="serv" label="Servicios">{servicios.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</optgroup>);
+                    if (productos.length) opts.push(<optgroup key="prod" label="Productos">{productos.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</optgroup>);
                     return opts;
                   })()}
                 </select>
@@ -2592,6 +2599,10 @@ export default function App() {
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Cant.
                 <input type="number" min="1" step="1" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceQty} onChange={(event) => setInvoiceQty(event.target.value)} />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-slate-700">
+                Precio
+                <input type="number" min="0" step="0.01" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" value={invoiceUnitPrice} onChange={(event) => setInvoiceUnitPrice(event.target.value)} placeholder="B/. 0.00" />
               </label>
               <label className="grid gap-2 text-sm font-bold text-slate-700">
                 Precio vidrio
